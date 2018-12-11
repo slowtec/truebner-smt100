@@ -17,8 +17,32 @@ pub struct SoilMoisture {
 }
 
 impl SoilMoisture {
+    pub const fn min() -> Self {
+        Self { percent: 0.0 }
+    }
+
+    pub const fn max() -> Self {
+        Self { percent: 100.0 }
+    }
+
     pub fn is_valid(self) -> bool {
-        self.percent >= 0.0 && self.percent <= 100.0
+        self >= Self::min() && self <= Self::max()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+/// Relative permittivity or dielectric constant (DK).
+pub struct RelativePermittivity {
+    pub ratio: f64,
+}
+
+impl RelativePermittivity {
+    pub const fn min() -> Self {
+        Self { ratio: 1.0 }
+    }
+
+    pub fn is_valid(self) -> bool {
+        self >= Self::min()
     }
 }
 
@@ -31,4 +55,7 @@ pub trait Device {
     /// Measure the current soil moisture in the range from 0% to 60%
     /// (up to 100% with limited accuracy).
     fn read_soil_moisture(&self) -> Box<Future<Item = SoilMoisture, Error = Error>>;
+
+    /// Measure the current (relative) permittivity of the medium around the sensor.
+    fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>>;
 }

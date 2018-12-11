@@ -51,6 +51,30 @@ pub fn decode_soil_moisture_bytes(bytes: &[u8]) -> Result<SoilMoisture> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct RelativePermittivityRaw(pub u16);
+
+impl From<RelativePermittivityRaw> for RelativePermittivity {
+    fn from(from: RelativePermittivityRaw) -> Self {
+        let ratio = f64::from(from.0) / 100f64;
+        Self { ratio }
+    }
+}
+
+pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
+    let mut rdr = Cursor::new(bytes);
+    let raw = rdr.read_u16::<BigEndian>()?;
+    let res: RelativePermittivity = RelativePermittivityRaw(raw).into();
+    if res.is_valid() {
+        Ok(res)
+    } else {
+        Err(Error::new(
+            ErrorKind::InvalidData,
+            format!("Relative permittivity out of range: {:?}", res),
+        ))
+    }
+}
+
 /// Asynchronous Modbus driver for the TRUEBNER SMT100 Soil Moisture Sensor device.
 pub trait Device: GenericDevice + SwitchDevice {
     fn change_device_id(&self, device_id: DeviceId) -> Box<Future<Item = DeviceId, Error = Error>>;
@@ -99,6 +123,18 @@ impl GenericDevice for Context {
             if let Response::ReadHoldingRegisters(regs) = rsp {
                 if let [raw] = regs[..] {
                     return Ok(SoilMoistureRaw(raw).into());
+                }
+            }
+            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
+        }))
+    }
+
+    fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
+        let req = Request::ReadHoldingRegisters(0x0002, 0x0001);
+        Box::new(self.client.call(req).and_then(|rsp| {
+            if let Response::ReadHoldingRegisters(regs) = rsp {
+                if let [raw] = regs[..] {
+                    return Ok(RelativePermittivityRaw(raw).into());
                 }
             }
             Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
@@ -168,5 +204,21 @@ mod tests {
         // Invalid range
         assert!(decode_soil_moisture_bytes(&[0x27, 0x11]).is_err());
         assert!(decode_soil_moisture_bytes(&[0xFF, 0xFF]).is_err());
+    }
+
+    #[test]
+    fn decode_permittivity() {
+        // Valid range
+        assert_eq!(
+            RelativePermittivity { ratio: 1.00 },
+            decode_permittivity_bytes(&[0x00, 0x64]).unwrap()
+        );
+        assert_eq!(
+            RelativePermittivity { ratio: 15.2 },
+            decode_permittivity_bytes(&[0x05, 0xF0]).unwrap()
+        );
+        // Invalid range
+        assert!(decode_permittivity_bytes(&[0x00, 0x00]).is_err());
+        assert!(decode_permittivity_bytes(&[0x00, 0x63]).is_err());
     }
 }
