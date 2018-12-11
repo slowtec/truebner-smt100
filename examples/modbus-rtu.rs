@@ -30,11 +30,11 @@ pub fn main() {
         })
         .and_then(|(ctx, rsp)| {
             println!("Current temperature is {:?}", rsp);
-            println!("Reading soil moisture");
-            ctx.read_soil_moisture().and_then(move |rsp| Ok((ctx, rsp)))
+            println!("Reading water content");
+            ctx.read_water_content().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(ctx, rsp)| {
-            println!("Current soil moisture is {:?}", rsp);
+            println!("Current water content is {:?}", rsp);
             println!("Reading (relative) permittivity");
             ctx.read_permittivity().and_then(move |rsp| Ok((ctx, rsp)))
         })

@@ -28,25 +28,25 @@ pub fn decode_temperature_bytes(bytes: &[u8]) -> Result<Temperature> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct SoilMoistureRaw(pub u16);
+struct WaterContentRaw(pub u16);
 
-impl From<SoilMoistureRaw> for SoilMoisture {
-    fn from(from: SoilMoistureRaw) -> Self {
+impl From<WaterContentRaw> for WaterContent {
+    fn from(from: WaterContentRaw) -> Self {
         let percent = f64::from(from.0) / 100f64;
         Self { percent }
     }
 }
 
-pub fn decode_soil_moisture_bytes(bytes: &[u8]) -> Result<SoilMoisture> {
+pub fn decode_water_content_bytes(bytes: &[u8]) -> Result<WaterContent> {
     let mut rdr = Cursor::new(bytes);
     let raw = rdr.read_u16::<BigEndian>()?;
-    let res: SoilMoisture = SoilMoistureRaw(raw).into();
+    let res: WaterContent = WaterContentRaw(raw).into();
     if res.is_valid() {
         Ok(res)
     } else {
         Err(Error::new(
             ErrorKind::InvalidData,
-            format!("Soil moisture out of range: {:?}", res),
+            format!("Water content out of range: {:?}", res),
         ))
     }
 }
@@ -117,12 +117,12 @@ impl GenericDevice for Context {
         }))
     }
 
-    fn read_soil_moisture(&self) -> Box<Future<Item = SoilMoisture, Error = Error>> {
+    fn read_water_content(&self) -> Box<Future<Item = WaterContent, Error = Error>> {
         let req = Request::ReadHoldingRegisters(0x0001, 0x0001);
         Box::new(self.client.call(req).and_then(|rsp| {
             if let Response::ReadHoldingRegisters(regs) = rsp {
                 if let [raw] = regs[..] {
-                    return Ok(SoilMoistureRaw(raw).into());
+                    return Ok(WaterContentRaw(raw).into());
                 }
             }
             Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
@@ -199,23 +199,23 @@ mod tests {
     }
 
     #[test]
-    fn decode_soil_moisture() {
+    fn decode_water_content() {
         // Valid range
         assert_eq!(
-            SoilMoisture { percent: 0.00 },
-            decode_soil_moisture_bytes(&[0x00, 0x00]).unwrap()
+            WaterContent { percent: 0.00 },
+            decode_water_content_bytes(&[0x00, 0x00]).unwrap()
         );
         assert_eq!(
-            SoilMoisture { percent: 34.4 },
-            decode_soil_moisture_bytes(&[0x0D, 0x70]).unwrap()
+            WaterContent { percent: 34.4 },
+            decode_water_content_bytes(&[0x0D, 0x70]).unwrap()
         );
         assert_eq!(
-            SoilMoisture { percent: 100.0 },
-            decode_soil_moisture_bytes(&[0x27, 0x10]).unwrap()
+            WaterContent { percent: 100.0 },
+            decode_water_content_bytes(&[0x27, 0x10]).unwrap()
         );
         // Invalid range
-        assert!(decode_soil_moisture_bytes(&[0x27, 0x11]).is_err());
-        assert!(decode_soil_moisture_bytes(&[0xFF, 0xFF]).is_err());
+        assert!(decode_water_content_bytes(&[0x27, 0x11]).is_err());
+        assert!(decode_water_content_bytes(&[0xFF, 0xFF]).is_err());
     }
 
     #[test]

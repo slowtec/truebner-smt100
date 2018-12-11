@@ -12,11 +12,11 @@ pub struct Temperature {
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 /// Soil volumetric water content (VWC).
-pub struct SoilMoisture {
+pub struct WaterContent {
     pub percent: f64,
 }
 
-impl SoilMoisture {
+impl WaterContent {
     pub const fn min() -> Self {
         Self { percent: 0.0 }
     }
@@ -52,9 +52,9 @@ pub trait Device {
     /// (analog version from -40°C to +60°C).
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>>;
 
-    /// Measure the current soil moisture in the range from 0% to 60%
-    /// (up to 100% with limited accuracy).
-    fn read_soil_moisture(&self) -> Box<Future<Item = SoilMoisture, Error = Error>>;
+    /// Measure the current water content of the medium (soil) around the sensor
+    /// in the range from 0% to 60% (up to 100% with limited accuracy).
+    fn read_water_content(&self) -> Box<Future<Item = WaterContent, Error = Error>>;
 
     /// Measure the current (relative) permittivity of the medium around the sensor.
     fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>>;
