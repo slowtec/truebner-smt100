@@ -6,6 +6,11 @@ use tokio_serial::{DataBits, FlowControl, Parity, Serial, SerialPortSettings, St
 use tokio_modbus::prelude::*;
 
 /// The fixed broadcast address of all sensors that cannot be altered.
+///
+/// Warning: This address should only be used for configuration purposes,
+/// i.e. for initially setting the Modbus slave address of each connected
+/// device. All other requests to this address are answered with the
+/// slave address 0 (= broadcast) and might be rejected by _tokio-modbus_!
 pub const BROADCAST_DEVICE_ID: DeviceId = DeviceId(0xFD);
 
 pub const SERIAL_PORT_SETTINGS: SerialPortSettings = SerialPortSettings {
