@@ -9,7 +9,7 @@ use std::{
     io::{Cursor, Error, ErrorKind, Result},
     ops::Deref,
 };
-use tokio_modbus::{client::Client as ModbusClient, prelude::*};
+use tokio_modbus::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct TemperatureRaw(pub u16);
@@ -57,17 +57,17 @@ pub trait Device: GenericDevice + SwitchDevice {
 }
 
 pub struct Context {
-    client: Box<dyn ModbusClient>,
+    client: Box<dyn Client>,
 }
 
 impl Context {
-    pub fn new(client: Box<dyn ModbusClient>) -> Self {
+    pub fn new(client: Box<dyn Client>) -> Self {
         Self { client }
     }
 }
 
 impl Deref for Context {
-    type Target = dyn ModbusClient;
+    type Target = dyn Client;
 
     fn deref(&self) -> &Self::Target {
         &*self.client
