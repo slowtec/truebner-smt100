@@ -9,12 +9,11 @@ pub fn main() {
 
     let mut core = Core::new().unwrap();
     let handle = core.handle();
+
+    // TODO: Parse TTY path and and Modbus slave address
+    // from command-line arguments
     let tty_path = "/dev/ttyUSB0";
     let device_id = DeviceId::min_slave();
-
-    // On Unix you might disable the `exclusive` flag:
-    // port.set_exclusive(false)
-    //     .expect("Unable to set serial port exlusive");
 
     let task = modbus::rtu::connect_path(&handle, tty_path)
         .and_then(move |ctx| {
@@ -29,17 +28,17 @@ pub fn main() {
             ctx.read_temperature().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(ctx, rsp)| {
-            println!("Current temperature is {:?}", rsp);
+            println!("Current temperature is {} °C", rsp.celsius);
             println!("Reading water content");
             ctx.read_water_content().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(ctx, rsp)| {
-            println!("Current water content is {:?}", rsp);
+            println!("Current water content is {} %", rsp.percent);
             println!("Reading (relative) permittivity");
             ctx.read_permittivity().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(_, rsp)| {
-            println!("Current (relative) permittivity is {:?}", rsp);
+            println!("Current (relative) permittivity is {} K", rsp.ratio);
             Ok(())
         });
 
