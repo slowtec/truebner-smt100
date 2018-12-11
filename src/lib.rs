@@ -58,4 +58,7 @@ pub trait Device {
 
     /// Measure the current (relative) permittivity of the medium around the sensor.
     fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>>;
+
+    /// Retrieve the current raw and uncalibrated signal of the sensor.
+    fn read_counts(&self) -> Box<Future<Item = usize, Error = Error>>;
 }

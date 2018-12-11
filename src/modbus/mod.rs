@@ -140,6 +140,18 @@ impl GenericDevice for Context {
             Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
         }))
     }
+
+    fn read_counts(&self) -> Box<Future<Item = usize, Error = Error>> {
+        let req = Request::ReadHoldingRegisters(0x0003, 0x0001);
+        Box::new(self.client.call(req).and_then(|rsp| {
+            if let Response::ReadHoldingRegisters(regs) = rsp {
+                if let [raw] = regs[..] {
+                    return Ok(raw.into());
+                }
+            }
+            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
+        }))
+    }
 }
 
 impl Device for Context {
