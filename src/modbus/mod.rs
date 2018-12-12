@@ -1,7 +1,7 @@
 #[cfg(feature = "modbus-rtu")]
 pub mod rtu;
 
-use super::{Sensor as GenericSensor, *};
+use super::*;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use futures::Future;
@@ -75,13 +75,6 @@ pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
     }
 }
 
-pub trait SlaveDevice {
-    fn reset_slave(&self, slave: Slave) -> Box<Future<Item = Slave, Error = Error>>;
-}
-
-/// Asynchronous Modbus driver for the TRUEBNER SMT100 Soil Moisture Sensor device.
-pub trait Sensor: GenericSensor + SlaveDevice + SlaveContext {}
-
 pub struct Context {
     client: Box<dyn Client>,
 }
@@ -106,7 +99,7 @@ impl SlaveContext for Context {
     }
 }
 
-impl GenericSensor for Context {
+impl Sensor for Context {
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>> {
         let req = Request::ReadHoldingRegisters(0x0000, 0x0001);
         Box::new(self.client.call(req).and_then(|rsp| {
@@ -149,23 +142,6 @@ impl GenericSensor for Context {
             if let Response::ReadHoldingRegisters(regs) = rsp {
                 if let [raw] = regs[..] {
                     return Ok(raw.into());
-                }
-            }
-            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
-        }))
-    }
-}
-
-impl SlaveDevice for Context {
-    fn reset_slave(&self, slave: Slave) -> Box<Future<Item = Slave, Error = Error>> {
-        let req_adr: u16 = 0x0004;
-        let slave_id: SlaveId = slave.into();
-        let req_reg: u16 = slave_id.into();
-        let req = Request::WriteSingleRegister(req_adr, req_reg);
-        Box::new(self.client.call(req).and_then(move |rsp| {
-            if let Response::WriteSingleRegister(rsp_adr, rsp_reg) = rsp {
-                if (req_adr, req_reg) == (rsp_adr, rsp_reg) {
-                    return Ok(slave);
                 }
             }
             Err(Error::new(ErrorKind::InvalidData, "Invalid response"))

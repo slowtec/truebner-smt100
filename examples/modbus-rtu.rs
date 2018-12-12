@@ -5,7 +5,7 @@ pub fn main() {
     use tokio_modbus::prelude::*;
 
     use truebner_smt100::{
-        modbus::{self, SlaveDevice},
+        modbus::{self, rtu::SlaveDevice},
         Sensor,
     };
 
@@ -20,7 +20,8 @@ pub fn main() {
     let task = modbus::rtu::connect_path(&handle, tty_path)
         .and_then(move |ctx| {
             println!("Resetting Modbus slave address to {:?}", slave);
-            ctx.reset_slave(slave).and_then(move |rsp| Ok((ctx, rsp)))
+            ctx.init_slave_device(slave)
+                .and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(move |(mut ctx, slave)| {
             println!("Reset Modbus slave address to {:?}", slave);
