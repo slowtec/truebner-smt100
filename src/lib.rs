@@ -47,7 +47,7 @@ impl RelativePermittivity {
 }
 
 /// Asynchronous generic device driver for the TRUEBNER SMT100 Soil Moisture Sensor.
-pub trait Device {
+pub trait Sensor {
     /// Measure the current temperature in the range from -40°C to +80°C
     /// (analog version from -40°C to +60°C).
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>>;

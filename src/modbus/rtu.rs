@@ -11,7 +11,7 @@ use tokio_modbus::prelude::*;
 /// i.e. for initially setting the Modbus slave address of each connected
 /// device. All other requests to this address are answered with the
 /// slave address 0 (= broadcast) and might be rejected by _tokio-modbus_!
-pub const BROADCAST_DEVICE_ID: DeviceId = DeviceId(0xFD);
+pub const BROADCAST_SLAVE: Slave = Slave(0xFD);
 
 pub const SERIAL_PORT_SETTINGS: SerialPortSettings = SerialPortSettings {
     baud_rate: 9600,
@@ -34,7 +34,7 @@ where
     match Serial::from_path_with_handle(tty_path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle())
     {
         Ok(port) => Box::new(
-            rtu::connect_device(handle, port, BROADCAST_DEVICE_ID).and_then(|conn| {
+            rtu::connect_slave(handle, port, BROADCAST_SLAVE).and_then(|conn| {
                 let boxed_client: Box<dyn Client> = conn.into();
                 Ok(super::Context::new(boxed_client))
             }),

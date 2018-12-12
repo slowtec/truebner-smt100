@@ -1,7 +1,7 @@
 #[cfg(feature = "modbus-rtu")]
 pub mod rtu;
 
-use super::{Device as GenericDevice, *};
+use super::{Sensor as GenericSensor, *};
 
 use byteorder::{BigEndian, ReadBytesExt};
 use futures::Future;
@@ -75,10 +75,12 @@ pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
     }
 }
 
-/// Asynchronous Modbus driver for the TRUEBNER SMT100 Soil Moisture Sensor device.
-pub trait Device: GenericDevice + SwitchDevice {
-    fn change_device_id(&self, device_id: DeviceId) -> Box<Future<Item = DeviceId, Error = Error>>;
+pub trait SlaveDevice {
+    fn reset_slave(&self, slave: Slave) -> Box<Future<Item = Slave, Error = Error>>;
 }
+
+/// Asynchronous Modbus driver for the TRUEBNER SMT100 Soil Moisture Sensor device.
+pub trait Sensor: GenericSensor + SlaveDevice + SlaveContext {}
 
 pub struct Context {
     client: Box<dyn Client>,
@@ -98,13 +100,13 @@ impl Deref for Context {
     }
 }
 
-impl SwitchDevice for Context {
-    fn switch_device(&mut self, device_id: DeviceId) -> DeviceId {
-        self.client.switch_device(device_id)
+impl SlaveContext for Context {
+    fn set_slave(&mut self, slave: Slave) {
+        self.client.set_slave(slave)
     }
 }
 
-impl GenericDevice for Context {
+impl GenericSensor for Context {
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>> {
         let req = Request::ReadHoldingRegisters(0x0000, 0x0001);
         Box::new(self.client.call(req).and_then(|rsp| {
@@ -154,15 +156,16 @@ impl GenericDevice for Context {
     }
 }
 
-impl Device for Context {
-    fn change_device_id(&self, device_id: DeviceId) -> Box<Future<Item = DeviceId, Error = Error>> {
+impl SlaveDevice for Context {
+    fn reset_slave(&self, slave: Slave) -> Box<Future<Item = Slave, Error = Error>> {
         let req_adr: u16 = 0x0004;
-        let req_reg: u16 = u16::from(u8::from(device_id));
+        let slave_id: SlaveId = slave.into();
+        let req_reg: u16 = slave_id.into();
         let req = Request::WriteSingleRegister(req_adr, req_reg);
         Box::new(self.client.call(req).and_then(move |rsp| {
             if let Response::WriteSingleRegister(rsp_adr, rsp_reg) = rsp {
                 if (req_adr, req_reg) == (rsp_adr, rsp_reg) {
-                    return Ok(device_id);
+                    return Ok(slave);
                 }
             }
             Err(Error::new(ErrorKind::InvalidData, "Invalid response"))

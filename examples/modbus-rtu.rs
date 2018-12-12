@@ -4,8 +4,10 @@ pub fn main() {
     use tokio_core::reactor::Core;
     use tokio_modbus::prelude::*;
 
-    use truebner_smt100::modbus::Device as ModbusDevice;
-    use truebner_smt100::*;
+    use truebner_smt100::{
+        modbus::{self, SlaveDevice},
+        Sensor,
+    };
 
     let mut core = Core::new().unwrap();
     let handle = core.handle();
@@ -13,17 +15,16 @@ pub fn main() {
     // TODO: Parse TTY path and and Modbus slave address
     // from command-line arguments
     let tty_path = "/dev/ttyUSB0";
-    let device_id = DeviceId::min_slave();
+    let slave = Slave::min_device();
 
     let task = modbus::rtu::connect_path(&handle, tty_path)
         .and_then(move |ctx| {
-            println!("Changing Modbus slave address to {:?}", device_id);
-            ctx.change_device_id(device_id)
-                .and_then(move |rsp| Ok((ctx, rsp)))
+            println!("Resetting Modbus slave address to {:?}", slave);
+            ctx.reset_slave(slave).and_then(move |rsp| Ok((ctx, rsp)))
         })
-        .and_then(move |(mut ctx, device_id)| {
-            println!("Changed Modbus slave address to {:?}", device_id);
-            ctx.switch_device(device_id);
+        .and_then(move |(mut ctx, slave)| {
+            println!("Reset Modbus slave address to {:?}", slave);
+            ctx.set_slave(slave);
             println!("Reading temperature");
             ctx.read_temperature().and_then(move |rsp| Ok((ctx, rsp)))
         })
