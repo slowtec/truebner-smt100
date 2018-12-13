@@ -9,7 +9,7 @@ use std::io::{Cursor, Error, ErrorKind, Result};
 use tokio_modbus::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct TemperatureRaw(pub u16);
+struct TemperatureRaw(u16);
 
 impl From<TemperatureRaw> for Temperature {
     fn from(from: TemperatureRaw) -> Self {
@@ -25,7 +25,7 @@ pub fn decode_temperature_bytes(bytes: &[u8]) -> Result<Temperature> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct WaterContentRaw(pub u16);
+struct WaterContentRaw(u16);
 
 impl From<WaterContentRaw> for WaterContent {
     fn from(from: WaterContentRaw) -> Self {
@@ -49,7 +49,7 @@ pub fn decode_water_content_bytes(bytes: &[u8]) -> Result<WaterContent> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct RelativePermittivityRaw(pub u16);
+struct RelativePermittivityRaw(u16);
 
 impl From<RelativePermittivityRaw> for RelativePermittivity {
     fn from(from: RelativePermittivityRaw) -> Self {
@@ -77,55 +77,92 @@ pub struct Context {
 }
 
 impl Context {
-    fn new(ctx: client::Context) -> Self {
-        Self { ctx }
+    /// Implementation of Sensor::read_temperature()
+    pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
+        self.ctx
+            .read_holding_registers(0x0000, 0x0001)
+            .and_then(|rsp| {
+                if let [raw] = rsp[..] {
+                    Ok(TemperatureRaw(raw).into())
+                } else {
+                    Err(Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Unexpected temperature data: {:?}", rsp),
+                    ))
+                }
+            })
     }
 
+    /// Implementation of Sensor::read_water_content()
+    pub fn read_water_content(&self) -> impl Future<Item = WaterContent, Error = Error> {
+        self.ctx
+            .read_holding_registers(0x0001, 0x0001)
+            .and_then(|rsp| {
+                if let [raw] = rsp[..] {
+                    let val = WaterContent::from(WaterContentRaw(raw));
+                    if val.is_valid() {
+                        Ok(val)
+                    } else {
+                        Err(Error::new(
+                            ErrorKind::InvalidData,
+                            format!("Invalid water content value: {}", val),
+                        ))
+                    }
+                } else {
+                    Err(Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Unexpected water content data: {:?}", rsp),
+                    ))
+                }
+            })
+    }
+
+    /// Implementation of Sensor::read_permittivity()
+    pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
+        self.ctx
+            .read_holding_registers(0x0002, 0x0001)
+            .and_then(|rsp| {
+                if let [raw] = rsp[..] {
+                    let val = RelativePermittivity::from(RelativePermittivityRaw(raw));
+                    if val.is_valid() {
+                        Ok(val)
+                    } else {
+                        Err(Error::new(
+                            ErrorKind::InvalidData,
+                            format!("Invalid relative permittivity value: {}", val),
+                        ))
+                    }
+                } else {
+                    Err(Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Unexpected relative permittivity data: {:?}", rsp),
+                    ))
+                }
+            })
+    }
+
+    /// Implementation of Sensor::read_counts()
+    pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
+        self.ctx
+            .read_holding_registers(0x0003, 0x0001)
+            .and_then(|rsp| {
+                if let [raw] = rsp[..] {
+                    Ok(raw.into())
+                } else {
+                    Err(Error::new(
+                        ErrorKind::InvalidData,
+                        format!("Unexpected raw count data: {:?}", rsp),
+                    ))
+                }
+            })
+    }
+
+    /// Permanently change the Modbus slave address/id of the device.
     pub fn init_slave(&self, slave: Slave) -> impl Future<Item = Slave, Error = Error> {
         let slave_id: SlaveId = slave.into();
         self.ctx
             .write_single_register(0x0004, slave_id as u16)
             .map(move |()| slave)
-    }
-
-    pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
-        self.ctx.read_holding_registers(0x0000, 0x0001).and_then(|rsp| {
-            if let [raw] = rsp[..] {
-                Ok(TemperatureRaw(raw).into())
-            } else {
-                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected temperature data: {:?}", rsp)))
-            }
-        })
-    }
-
-    pub fn read_water_content(&self) -> impl Future<Item = WaterContent, Error = Error> {
-        self.ctx.read_holding_registers(0x0001, 0x0001).and_then(|rsp| {
-            if let [raw] = rsp[..] {
-                Ok(WaterContentRaw(raw).into())
-            } else {
-                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected water content data: {:?}", rsp)))
-            }
-        })
-    }
-
-    pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        self.ctx.read_holding_registers(0x0002, 0x0001).and_then(|rsp| {
-            if let [raw] = rsp[..] {
-                Ok(RelativePermittivityRaw(raw).into())
-            } else {
-                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected relative permittivity data: {:?}", rsp)))
-            }
-        })
-    }
-
-    pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
-        self.ctx.read_holding_registers(0x0003, 0x0001).and_then(|rsp| {
-            if let [raw] = rsp[..] {
-                Ok(raw.into())
-            } else {
-                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected raw count data: {:?}", rsp)))
-            }
-        })
     }
 }
 

@@ -2,12 +2,18 @@
 pub mod modbus;
 
 use futures::Future;
-use std::io::Error;
+use std::{fmt, io::Error};
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 /// Temperature (°C).
 pub struct Temperature {
     pub celsius: f64,
+}
+
+impl fmt::Display for Temperature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} °C", self.celsius)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
@@ -30,6 +36,12 @@ impl WaterContent {
     }
 }
 
+impl fmt::Display for WaterContent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} %", self.percent)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 /// Relative permittivity or dielectric constant (DK).
 pub struct RelativePermittivity {
@@ -46,7 +58,13 @@ impl RelativePermittivity {
     }
 }
 
-/// Asynchronous generic device driver for the TRUEBNER SMT100 Soil Moisture Sensor.
+impl fmt::Display for RelativePermittivity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.ratio)
+    }
+}
+
+/// Asynchronous generic device driver interface for the TRUEBNER SMT100 Soil Moisture Sensor.
 pub trait Sensor {
     /// Measure the current temperature in the range from -40°C to +80°C
     /// (analog version from -40°C to +60°C).

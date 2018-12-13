@@ -26,17 +26,17 @@ pub fn main() {
             ctx.read_temperature().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(ctx, rsp)| {
-            println!("Current temperature is {} °C", rsp.celsius);
+            println!("Current temperature is {}", rsp);
             println!("Reading water content");
             ctx.read_water_content().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(ctx, rsp)| {
-            println!("Current water content is {} %", rsp.percent);
+            println!("Current water content is {}", rsp);
             println!("Reading (relative) permittivity");
             ctx.read_permittivity().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(_, rsp)| {
-            println!("Current (relative) permittivity is {} K", rsp.ratio);
+            println!("Current (relative) permittivity is {}", rsp);
             Ok(())
         });
 
