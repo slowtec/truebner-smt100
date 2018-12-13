@@ -41,24 +41,3 @@ where
         Err(err) => Box::new(future::err(err)),
     }
 }
-
-pub trait SlaveDevice {
-    fn init_slave_device(&self, slave: Slave) -> Box<Future<Item = Slave, Error = Error>>;
-}
-
-impl SlaveDevice for super::Context {
-    fn init_slave_device(&self, slave: Slave) -> Box<Future<Item = Slave, Error = Error>> {
-        let req_adr: u16 = 0x0004;
-        let slave_id: SlaveId = slave.into();
-        let req_reg: u16 = slave_id.into();
-        let req = Request::WriteSingleRegister(req_adr, req_reg);
-        Box::new(self.ctx.call(req).and_then(move |rsp| {
-            if let Response::WriteSingleRegister(rsp_adr, rsp_reg) = rsp {
-                if (req_adr, req_reg) == (rsp_adr, rsp_reg) {
-                    return Ok(slave);
-                }
-            }
-            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
-        }))
-    }
-}

@@ -80,6 +80,53 @@ impl Context {
     fn new(ctx: client::Context) -> Self {
         Self { ctx }
     }
+
+    pub fn init_slave(&self, slave: Slave) -> impl Future<Item = Slave, Error = Error> {
+        let slave_id: SlaveId = slave.into();
+        self.ctx
+            .write_single_register(0x0004, slave_id as u16)
+            .map(move |()| slave)
+    }
+
+    pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
+        self.ctx.read_holding_registers(0x0000, 0x0001).and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                Ok(TemperatureRaw(raw).into())
+            } else {
+                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected temperature data: {:?}", rsp)))
+            }
+        })
+    }
+
+    pub fn read_water_content(&self) -> impl Future<Item = WaterContent, Error = Error> {
+        self.ctx.read_holding_registers(0x0001, 0x0001).and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                Ok(WaterContentRaw(raw).into())
+            } else {
+                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected water content data: {:?}", rsp)))
+            }
+        })
+    }
+
+    pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
+        self.ctx.read_holding_registers(0x0002, 0x0001).and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                Ok(RelativePermittivityRaw(raw).into())
+            } else {
+                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected relative permittivity data: {:?}", rsp)))
+            }
+        })
+    }
+
+    pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
+        self.ctx.read_holding_registers(0x0003, 0x0001).and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                Ok(raw.into())
+            } else {
+                Err(Error::new(ErrorKind::InvalidData, format!("Unexpected raw count data: {:?}", rsp)))
+            }
+        })
+    }
 }
 
 impl SlaveContext for Context {
@@ -90,51 +137,19 @@ impl SlaveContext for Context {
 
 impl Sensor for Context {
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>> {
-        let req = Request::ReadHoldingRegisters(0x0000, 0x0001);
-        Box::new(self.ctx.call(req).and_then(|rsp| {
-            if let Response::ReadHoldingRegisters(regs) = rsp {
-                if let [raw] = regs[..] {
-                    return Ok(TemperatureRaw(raw).into());
-                }
-            }
-            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
-        }))
+        Box::new(self.read_temperature())
     }
 
     fn read_water_content(&self) -> Box<Future<Item = WaterContent, Error = Error>> {
-        let req = Request::ReadHoldingRegisters(0x0001, 0x0001);
-        Box::new(self.ctx.call(req).and_then(|rsp| {
-            if let Response::ReadHoldingRegisters(regs) = rsp {
-                if let [raw] = regs[..] {
-                    return Ok(WaterContentRaw(raw).into());
-                }
-            }
-            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
-        }))
+        Box::new(self.read_water_content())
     }
 
     fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
-        let req = Request::ReadHoldingRegisters(0x0002, 0x0001);
-        Box::new(self.ctx.call(req).and_then(|rsp| {
-            if let Response::ReadHoldingRegisters(regs) = rsp {
-                if let [raw] = regs[..] {
-                    return Ok(RelativePermittivityRaw(raw).into());
-                }
-            }
-            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
-        }))
+        Box::new(self.read_permittivity())
     }
 
     fn read_counts(&self) -> Box<Future<Item = usize, Error = Error>> {
-        let req = Request::ReadHoldingRegisters(0x0003, 0x0001);
-        Box::new(self.ctx.call(req).and_then(|rsp| {
-            if let Response::ReadHoldingRegisters(regs) = rsp {
-                if let [raw] = regs[..] {
-                    return Ok(raw.into());
-                }
-            }
-            Err(Error::new(ErrorKind::InvalidData, "Invalid response"))
-        }))
+        Box::new(self.read_counts())
     }
 }
 
