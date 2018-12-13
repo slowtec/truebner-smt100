@@ -35,10 +35,8 @@ where
     match Serial::from_path_with_handle(tty_path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle())
     {
         Ok(port) => Box::new(
-            connect_slave(handle, port, BROADCAST_SLAVE).and_then(|conn| {
-                let boxed_client: Box<dyn Client> = conn.into();
-                Ok(super::Context::new(boxed_client))
-            }),
+            connect_slave(handle, port, BROADCAST_SLAVE)
+                .and_then(|ctx| Ok(super::Context::new(ctx))),
         ),
         Err(err) => Box::new(future::err(err)),
     }
@@ -54,7 +52,7 @@ impl SlaveDevice for super::Context {
         let slave_id: SlaveId = slave.into();
         let req_reg: u16 = slave_id.into();
         let req = Request::WriteSingleRegister(req_adr, req_reg);
-        Box::new(self.client.call(req).and_then(move |rsp| {
+        Box::new(self.ctx.call(req).and_then(move |rsp| {
             if let Response::WriteSingleRegister(rsp_adr, rsp_reg) = rsp {
                 if (req_adr, req_reg) == (rsp_adr, rsp_reg) {
                     return Ok(slave);

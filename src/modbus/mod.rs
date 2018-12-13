@@ -5,10 +5,7 @@ use super::*;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use futures::Future;
-use std::{
-    io::{Cursor, Error, ErrorKind, Result},
-    ops::Deref,
-};
+use std::io::{Cursor, Error, ErrorKind, Result};
 use tokio_modbus::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,33 +73,25 @@ pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
 }
 
 pub struct Context {
-    client: Box<dyn Client>,
+    ctx: client::Context,
 }
 
 impl Context {
-    pub fn new(client: Box<dyn Client>) -> Self {
-        Self { client }
-    }
-}
-
-impl Deref for Context {
-    type Target = dyn Client;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.client
+    fn new(ctx: client::Context) -> Self {
+        Self { ctx }
     }
 }
 
 impl SlaveContext for Context {
     fn set_slave(&mut self, slave: Slave) {
-        self.client.set_slave(slave)
+        self.ctx.set_slave(slave)
     }
 }
 
 impl Sensor for Context {
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>> {
         let req = Request::ReadHoldingRegisters(0x0000, 0x0001);
-        Box::new(self.client.call(req).and_then(|rsp| {
+        Box::new(self.ctx.call(req).and_then(|rsp| {
             if let Response::ReadHoldingRegisters(regs) = rsp {
                 if let [raw] = regs[..] {
                     return Ok(TemperatureRaw(raw).into());
@@ -114,7 +103,7 @@ impl Sensor for Context {
 
     fn read_water_content(&self) -> Box<Future<Item = WaterContent, Error = Error>> {
         let req = Request::ReadHoldingRegisters(0x0001, 0x0001);
-        Box::new(self.client.call(req).and_then(|rsp| {
+        Box::new(self.ctx.call(req).and_then(|rsp| {
             if let Response::ReadHoldingRegisters(regs) = rsp {
                 if let [raw] = regs[..] {
                     return Ok(WaterContentRaw(raw).into());
@@ -126,7 +115,7 @@ impl Sensor for Context {
 
     fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
         let req = Request::ReadHoldingRegisters(0x0002, 0x0001);
-        Box::new(self.client.call(req).and_then(|rsp| {
+        Box::new(self.ctx.call(req).and_then(|rsp| {
             if let Response::ReadHoldingRegisters(regs) = rsp {
                 if let [raw] = regs[..] {
                     return Ok(RelativePermittivityRaw(raw).into());
@@ -138,7 +127,7 @@ impl Sensor for Context {
 
     fn read_counts(&self) -> Box<Future<Item = usize, Error = Error>> {
         let req = Request::ReadHoldingRegisters(0x0003, 0x0001);
-        Box::new(self.client.call(req).and_then(|rsp| {
+        Box::new(self.ctx.call(req).and_then(|rsp| {
             if let Response::ReadHoldingRegisters(regs) = rsp {
                 if let [raw] = regs[..] {
                     return Ok(raw.into());
