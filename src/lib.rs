@@ -5,8 +5,9 @@ use futures::Future;
 use std::{fmt, io::Error};
 use uom::si::f64;
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 /// /Thermodynamic) Temperature.
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Temperature(f64::ThermodynamicTemperature);
 
 impl Temperature {
@@ -40,8 +41,9 @@ impl fmt::Display for Temperature {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 /// Soil volumetric water content (VWC).
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct VolumetricWaterContent(f64::Ratio);
 
 impl VolumetricWaterContent {
@@ -85,8 +87,9 @@ impl fmt::Display for VolumetricWaterContent {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 /// Relative permittivity or dielectric constant (DK).
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct RelativePermittivity(f64::Ratio);
 
 impl RelativePermittivity {
