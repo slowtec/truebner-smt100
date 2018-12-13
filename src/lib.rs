@@ -14,9 +14,12 @@ impl Temperature {
         Temperature(f64::ThermodynamicTemperature::new::<uom::si::thermodynamic_temperature::degree_celsius>(degree_celsius))
     }
 
+    /// The value in degree celsius with a precision of 2 decimal places.
     pub fn degree_celsius(self) -> f64 {
         self.0.get::<uom::si::thermodynamic_temperature::degree_celsius>()
     }
+
+
 }
 
 impl From<f64::ThermodynamicTemperature> for Temperature {
@@ -46,6 +49,7 @@ impl VolumetricWaterContent {
         VolumetricWaterContent(f64::Ratio::new::<uom::si::ratio::percent>(percent))
     }
 
+    /// The value in precent with a precision of 2 decimal places.
     pub fn percent(self) -> f64 {
         self.0.get::<uom::si::ratio::percent>()
     }
@@ -90,6 +94,7 @@ impl RelativePermittivity {
         RelativePermittivity(f64::Ratio::new::<uom::si::ratio::ratio>(ratio))
     }
 
+    /// The ration with a precision of 2 decimal places.
     pub fn ratio(self) -> f64 {
         self.0.get::<uom::si::ratio::ratio>()
     }
