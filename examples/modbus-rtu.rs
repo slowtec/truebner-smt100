@@ -22,16 +22,16 @@ pub fn main() {
         .and_then(move |(mut ctx, slave)| {
             println!("Reset Modbus slave address to {:?}", slave);
             ctx.set_slave(slave);
-            println!("Reading temperature");
+            println!("Reading (thermodynamic) temperature...");
             ctx.read_temperature().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(ctx, rsp)| {
-            println!("Current temperature is {}", rsp);
-            println!("Reading water content");
+            println!("Current (thermodynamic) temperature is {}", rsp);
+            println!("Reading (volumetric) water content...");
             ctx.read_water_content().and_then(move |rsp| Ok((ctx, rsp)))
         })
         .and_then(|(ctx, rsp)| {
-            println!("Current water content is {}", rsp);
+            println!("Current (volumetric) water content is {}", rsp);
             println!("Reading (relative) permittivity");
             ctx.read_permittivity().and_then(move |rsp| Ok((ctx, rsp)))
         })
