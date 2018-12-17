@@ -5,7 +5,11 @@ use super::*;
 
 use byteorder::{BigEndian, ReadBytesExt};
 use futures::Future;
-use std::io::{Cursor, Error, ErrorKind, Result};
+use std::{
+    cell::RefCell,
+    io::{Cursor, Error, ErrorKind, Result},
+    rc::Rc,
+};
 use tokio_modbus::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -187,6 +191,41 @@ impl Sensor for Context {
 
     fn read_counts(&self) -> Box<Future<Item = usize, Error = Error>> {
         Box::new(self.read_counts())
+    }
+}
+
+pub struct SlaveProxy {
+    context: Rc<RefCell<Context>>,
+    slave: Slave,
+}
+
+impl SlaveProxy {
+    pub fn new(context: Rc<RefCell<Context>>, slave: Slave) -> Self {
+        Self { context, slave }
+    }
+
+    pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_temperature()
+    }
+
+    pub fn read_water_content(&self) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_water_content()
+    }
+
+    pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_permittivity()
+    }
+
+    pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_counts()
     }
 }
 
