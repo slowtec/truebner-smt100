@@ -195,37 +195,46 @@ impl Sensor for Context {
 }
 
 pub struct SlaveProxy {
-    context: Rc<RefCell<Context>>,
+    ctx: Rc<RefCell<Context>>,
     slave: Slave,
 }
 
 impl SlaveProxy {
-    pub fn new(context: Rc<RefCell<Context>>, slave: Slave) -> Self {
-        Self { context, slave }
+    pub fn new(ctx: Rc<RefCell<Context>>, slave: Slave) -> Self {
+        Self { ctx, slave }
+    }
+
+    pub fn from_context(ctx: Context, slave: Slave) -> Self {
+        let ctx = Rc::new(RefCell::new(ctx));
+        Self::new(ctx, slave)
+    }
+
+    pub fn context(&self) -> Rc<RefCell<Context>> {
+        Rc::clone(&self.ctx)
     }
 
     pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_temperature()
+        let mut ctx = self.ctx.borrow_mut();
+        ctx.set_slave(self.slave);
+        ctx.read_temperature()
     }
 
     pub fn read_water_content(&self) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_water_content()
+        let mut ctx = self.ctx.borrow_mut();
+        ctx.set_slave(self.slave);
+        ctx.read_water_content()
     }
 
     pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_permittivity()
+        let mut ctx = self.ctx.borrow_mut();
+        ctx.set_slave(self.slave);
+        ctx.read_permittivity()
     }
 
     pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_counts()
+        let mut ctx = self.ctx.borrow_mut();
+        ctx.set_slave(self.slave);
+        ctx.read_counts()
     }
 }
 

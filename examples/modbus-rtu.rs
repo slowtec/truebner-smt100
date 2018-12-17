@@ -19,21 +19,21 @@ pub fn main() {
             println!("Resetting Modbus slave address to {:?}", slave);
             ctx.init_slave(slave).and_then(move |rsp| Ok((ctx, rsp)))
         })
-        .and_then(move |(mut ctx, slave)| {
+        .and_then(move |(ctx, slave)| {
             println!("Reset Modbus slave address to {:?}", slave);
-            ctx.set_slave(slave);
+            let proxy = modbus::SlaveProxy::from_context(ctx, slave);
             println!("Reading (thermodynamic) temperature...");
-            ctx.read_temperature().and_then(move |rsp| Ok((ctx, rsp)))
+            proxy.read_temperature().and_then(move |rsp| Ok((proxy, rsp)))
         })
-        .and_then(|(ctx, rsp)| {
+        .and_then(|(proxy, rsp)| {
             println!("Current (thermodynamic) temperature is {}", rsp);
             println!("Reading (volumetric) water content...");
-            ctx.read_water_content().and_then(move |rsp| Ok((ctx, rsp)))
+            proxy.read_water_content().and_then(move |rsp| Ok((proxy, rsp)))
         })
-        .and_then(|(ctx, rsp)| {
+        .and_then(|(proxy, rsp)| {
             println!("Current (volumetric) water content is {}", rsp);
             println!("Reading (relative) permittivity");
-            ctx.read_permittivity().and_then(move |rsp| Ok((ctx, rsp)))
+            proxy.read_permittivity().and_then(move |rsp| Ok((proxy, rsp)))
         })
         .and_then(|(_, rsp)| {
             println!("Current (relative) permittivity is {}", rsp);
