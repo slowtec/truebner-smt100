@@ -1,6 +1,9 @@
 #[cfg(any(feature = "modbus-rtu"))]
 pub mod modbus;
 
+#[cfg(any(feature = "mock"))]
+pub mod mock;
+
 use futures::Future;
 use std::{fmt, io::Error};
 use uom::si::f64;
@@ -11,16 +14,17 @@ use uom::si::f64;
 pub struct Temperature(f64::ThermodynamicTemperature);
 
 impl Temperature {
-    pub /*const*/ fn from_degree_celsius(degree_celsius: f64) -> Self {
-        Temperature(f64::ThermodynamicTemperature::new::<uom::si::thermodynamic_temperature::degree_celsius>(degree_celsius))
+    pub fn from_degree_celsius(degree_celsius: f64) -> Self {
+        Temperature(f64::ThermodynamicTemperature::new::<
+            uom::si::thermodynamic_temperature::degree_celsius,
+        >(degree_celsius))
     }
 
     /// The value in degree celsius with a precision of 2 decimal places.
     pub fn degree_celsius(self) -> f64 {
-        self.0.get::<uom::si::thermodynamic_temperature::degree_celsius>()
+        self.0
+            .get::<uom::si::thermodynamic_temperature::degree_celsius>()
     }
-
-
 }
 
 impl From<f64::ThermodynamicTemperature> for Temperature {
@@ -47,7 +51,7 @@ impl fmt::Display for Temperature {
 pub struct VolumetricWaterContent(f64::Ratio);
 
 impl VolumetricWaterContent {
-    pub /*const*/ fn from_percent(percent: f64) -> Self {
+    pub fn from_percent(percent: f64) -> Self {
         VolumetricWaterContent(f64::Ratio::new::<uom::si::ratio::percent>(percent))
     }
 
@@ -56,11 +60,11 @@ impl VolumetricWaterContent {
         self.0.get::<uom::si::ratio::percent>()
     }
 
-    pub /*const*/ fn min() -> Self {
+    pub fn min() -> Self {
         Self::from_percent(0.0)
     }
 
-    pub /*const*/ fn max() -> Self {
+    pub fn max() -> Self {
         Self::from_percent(100.0)
     }
 
@@ -93,7 +97,7 @@ impl fmt::Display for VolumetricWaterContent {
 pub struct RelativePermittivity(f64::Ratio);
 
 impl RelativePermittivity {
-    pub /*const*/ fn from_ratio(ratio: f64) -> Self {
+    pub fn from_ratio(ratio: f64) -> Self {
         RelativePermittivity(f64::Ratio::new::<uom::si::ratio::ratio>(ratio))
     }
 
@@ -102,7 +106,7 @@ impl RelativePermittivity {
         self.0.get::<uom::si::ratio::ratio>()
     }
 
-    pub /*const*/ fn min() -> Self {
+    pub fn min() -> Self {
         Self::from_ratio(1.0)
     }
 
@@ -155,7 +159,8 @@ mod tests {
         for i in 0..=100 {
             assert!(VolumetricWaterContent::from_percent(i as f64).is_valid());
             assert!(
-                (i as f64 - VolumetricWaterContent::from_percent(i as f64).percent()).abs() < 0.000001,
+                (i as f64 - VolumetricWaterContent::from_percent(i as f64).percent()).abs()
+                    < 0.000001,
             );
         }
         assert!(!VolumetricWaterContent::from_percent(-0.5).is_valid());

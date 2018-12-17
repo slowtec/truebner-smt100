@@ -23,5 +23,6 @@ tokio-modbus = { version = "0.3", default-features = false, features = ["rtu"], 
 tokio-serial = { version = "3.1", optional = true }
 
 [features]
-default = ["modbus-rtu"]
+default = ["modbus-rtu", "mock"]
+mock = []
 modbus-rtu = ["tokio-modbus", "tokio-serial"]
