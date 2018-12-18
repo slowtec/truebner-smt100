@@ -77,13 +77,13 @@ pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
 }
 
 pub struct Context {
-    ctx: client::Context,
+    context: client::Context,
 }
 
 impl Context {
-    /// Implementation of Sensor::read_temperature()
+    /// Implementation of Capabilities::read_temperature()
     pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
-        self.ctx
+        self.context
             .read_holding_registers(0x0000, 0x0001)
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
@@ -97,9 +97,9 @@ impl Context {
             })
     }
 
-    /// Implementation of Sensor::read_water_content()
+    /// Implementation of Capabilities::read_water_content()
     pub fn read_water_content(&self) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        self.ctx
+        self.context
             .read_holding_registers(0x0001, 0x0001)
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
@@ -121,9 +121,9 @@ impl Context {
             })
     }
 
-    /// Implementation of Sensor::read_permittivity()
+    /// Implementation of Capabilities::read_permittivity()
     pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        self.ctx
+        self.context
             .read_holding_registers(0x0002, 0x0001)
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
@@ -145,9 +145,9 @@ impl Context {
             })
     }
 
-    /// Implementation of Sensor::read_counts()
+    /// Implementation of Capabilities::read_counts()
     pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
-        self.ctx
+        self.context
             .read_holding_registers(0x0003, 0x0001)
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
@@ -164,7 +164,7 @@ impl Context {
     /// Permanently change the Modbus slave address/id of the device.
     pub fn init_slave(&self, slave: Slave) -> impl Future<Item = Slave, Error = Error> {
         let slave_id: SlaveId = slave.into();
-        self.ctx
+        self.context
             .write_single_register(0x0004, slave_id as u16)
             .map(move |()| slave)
     }
@@ -172,11 +172,11 @@ impl Context {
 
 impl SlaveContext for Context {
     fn set_slave(&mut self, slave: Slave) {
-        self.ctx.set_slave(slave)
+        self.context.set_slave(slave)
     }
 }
 
-impl Sensor for Context {
+impl Capabilities for Context {
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>> {
         Box::new(self.read_temperature())
     }
@@ -195,46 +195,64 @@ impl Sensor for Context {
 }
 
 pub struct SlaveProxy {
-    ctx: Rc<RefCell<Context>>,
+    context: Rc<RefCell<Context>>,
     slave: Slave,
 }
 
 impl SlaveProxy {
-    pub fn new(ctx: Rc<RefCell<Context>>, slave: Slave) -> Self {
-        Self { ctx, slave }
+    pub fn new(context: Rc<RefCell<Context>>, slave: Slave) -> Self {
+        Self { context, slave }
     }
 
-    pub fn from_context(ctx: Context, slave: Slave) -> Self {
-        let ctx = Rc::new(RefCell::new(ctx));
-        Self::new(ctx, slave)
+    pub fn from_context(context: Context, slave: Slave) -> Self {
+        let context = Rc::new(RefCell::new(context));
+        Self::new(context, slave)
     }
 
     pub fn context(&self) -> Rc<RefCell<Context>> {
-        Rc::clone(&self.ctx)
+        Rc::clone(&self.context)
     }
 
     pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
-        let mut ctx = self.ctx.borrow_mut();
-        ctx.set_slave(self.slave);
-        ctx.read_temperature()
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_temperature()
     }
 
     pub fn read_water_content(&self) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        let mut ctx = self.ctx.borrow_mut();
-        ctx.set_slave(self.slave);
-        ctx.read_water_content()
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_water_content()
     }
 
     pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        let mut ctx = self.ctx.borrow_mut();
-        ctx.set_slave(self.slave);
-        ctx.read_permittivity()
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_permittivity()
     }
 
     pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
-        let mut ctx = self.ctx.borrow_mut();
-        ctx.set_slave(self.slave);
-        ctx.read_counts()
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context.read_counts()
+    }
+}
+
+impl Capabilities for SlaveProxy {
+    fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>> {
+        Box::new(self.read_temperature())
+    }
+
+    fn read_water_content(&self) -> Box<Future<Item = VolumetricWaterContent, Error = Error>> {
+        Box::new(self.read_water_content())
+    }
+
+    fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
+        Box::new(self.read_permittivity())
+    }
+
+    fn read_counts(&self) -> Box<Future<Item = usize, Error = Error>> {
+        Box::new(self.read_counts())
     }
 }
 

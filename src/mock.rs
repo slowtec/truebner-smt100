@@ -26,28 +26,28 @@ impl Proxy {
         self.counts = counts;
     }
 
-    /// Implementation of Sensor::read_temperature()
+    /// Implementation of Capabilities::read_temperature()
     pub fn read_temperature(&self) -> impl Future<Item = Temperature, Error = Error> {
         future::ok(self.temperature)
     }
 
-    /// Implementation of Sensor::read_water_content()
+    /// Implementation of Capabilities::read_water_content()
     pub fn read_water_content(&self) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
         future::ok(self.water_content)
     }
 
-    /// Implementation of Sensor::read_permittivity()
+    /// Implementation of Capabilities::read_permittivity()
     pub fn read_permittivity(&self) -> impl Future<Item = RelativePermittivity, Error = Error> {
         future::ok(self.permittivity)
     }
 
-    /// Implementation of Sensor::read_counts()
+    /// Implementation of Capabilities::read_counts()
     pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
         future::ok(self.counts)
     }
 }
 
-impl Sensor for Proxy {
+impl Capabilities for Proxy {
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>> {
         Box::new(self.read_temperature())
     }

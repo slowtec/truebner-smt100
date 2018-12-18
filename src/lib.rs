@@ -8,7 +8,7 @@ use futures::Future;
 use std::{fmt, io::Error};
 use uom::si::f64;
 
-/// /Thermodynamic) Temperature.
+/// (Thermodynamic) Temperature.
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Temperature(f64::ThermodynamicTemperature);
@@ -45,7 +45,7 @@ impl fmt::Display for Temperature {
     }
 }
 
-/// Soil volumetric water content (VWC).
+/// Volumetric water content (VWC).
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct VolumetricWaterContent(f64::Ratio);
@@ -55,7 +55,7 @@ impl VolumetricWaterContent {
         VolumetricWaterContent(f64::Ratio::new::<uom::si::ratio::percent>(percent))
     }
 
-    /// The value in precent with a precision of 2 decimal places.
+    /// The value in percent with a precision of 2 decimal places.
     pub fn percent(self) -> f64 {
         self.0.get::<uom::si::ratio::percent>()
     }
@@ -133,8 +133,9 @@ impl fmt::Display for RelativePermittivity {
     }
 }
 
-/// Asynchronous generic device driver interface for the TRUEBNER SMT100 Soil Moisture Sensor.
-pub trait Sensor {
+/// Asynchronous interface that exposes the generic capabilities of the
+/// TRUEBNER SMT100 Soil Moisture Sensor.
+pub trait Capabilities {
     /// Measure the current temperature in the range from -40°C to +80°C
     /// (analog version from -40°C to +60°C).
     fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>>;

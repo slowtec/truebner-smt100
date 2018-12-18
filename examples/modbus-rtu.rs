@@ -15,13 +15,13 @@ pub fn main() {
     let slave = Slave::min_device();
 
     let task = modbus::rtu::connect_path(&handle, tty_path)
-        .and_then(move |ctx| {
+        .and_then(move |context| {
             println!("Resetting Modbus slave address to {:?}", slave);
-            ctx.init_slave(slave).and_then(move |rsp| Ok((ctx, rsp)))
+            context.init_slave(slave).and_then(move |rsp| Ok((context, rsp)))
         })
-        .and_then(move |(ctx, slave)| {
+        .and_then(move |(context, slave)| {
             println!("Reset Modbus slave address to {:?}", slave);
-            let proxy = modbus::SlaveProxy::from_context(ctx, slave);
+            let proxy = modbus::SlaveProxy::from_context(context, slave);
             println!("Reading (thermodynamic) temperature...");
             proxy.read_temperature().and_then(move |rsp| Ok((proxy, rsp)))
         })
