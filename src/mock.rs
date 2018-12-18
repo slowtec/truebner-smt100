@@ -10,16 +10,32 @@ pub struct Proxy {
 }
 
 impl Proxy {
+    pub fn default_temperature() -> Temperature {
+        Temperature::from_degree_celsius(20.0)
+    }
+
     pub fn set_temperature(&mut self, temperature: Temperature) {
         self.temperature = temperature;
+    }
+
+    pub fn default_water_content() -> VolumetricWaterContent {
+        VolumetricWaterContent::from_percent(30.0)
     }
 
     pub fn set_water_content(&mut self, water_content: VolumetricWaterContent) {
         self.water_content = water_content;
     }
 
+    pub fn default_permittivity() -> RelativePermittivity {
+        RelativePermittivity::min()
+    }
+
     pub fn set_permittivity(&mut self, permittivity: RelativePermittivity) {
         self.permittivity = permittivity;
+    }
+
+    pub const fn default_counts() -> usize {
+        0
     }
 
     pub fn set_counts(&mut self, counts: usize) {
@@ -44,6 +60,17 @@ impl Proxy {
     /// Implementation of Capabilities::read_counts()
     pub fn read_counts(&self) -> impl Future<Item = usize, Error = Error> {
         future::ok(self.counts)
+    }
+}
+
+impl Default for Proxy {
+    fn default() -> Self {
+        Self {
+            temperature: Self::default_temperature(),
+            water_content: Self::default_water_content(),
+            permittivity: Self::default_permittivity(),
+            counts: Self::default_counts(),
+        }
     }
 }
 
