@@ -16,6 +16,7 @@ tokio-modbus = { git = "https://github.com/uklotzde/tokio-modbus", branch = "new
 [dependencies]
 byteorder = "1"
 futures = "0.1"
+tokio = "0.1"
 tokio-core = "0.1"
 uom = { version = "0.20", features = ["f64", "si"] }
 

@@ -35,7 +35,8 @@ where
     match Serial::from_path_with_handle(tty_path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle())
     {
         Ok(port) => Box::new(
-            connect_slave(handle, port, BROADCAST_SLAVE).and_then(|context| Ok(super::Context { context })),
+            connect_slave(handle, port, BROADCAST_SLAVE)
+                .and_then(|context| Ok(super::Context { context })),
         ),
         Err(err) => Box::new(future::err(err)),
     }

@@ -5,7 +5,7 @@ pub mod modbus;
 pub mod mock;
 
 use futures::Future;
-use std::{fmt, io::Error};
+use std::{fmt, io::Error, time::Duration};
 use uom::si::f64;
 
 /// (Thermodynamic) Temperature.
@@ -138,17 +138,24 @@ impl fmt::Display for RelativePermittivity {
 pub trait Capabilities {
     /// Measure the current temperature in the range from -40°C to +80°C
     /// (analog version from -40°C to +60°C).
-    fn read_temperature(&self) -> Box<Future<Item = Temperature, Error = Error>>;
+    fn read_temperature(&self, timeout: Duration)
+        -> Box<Future<Item = Temperature, Error = Error>>;
 
     /// Measure the current water content of the medium (soil) around the sensor
     /// in the range from 0% to 60% (up to 100% with limited accuracy).
-    fn read_water_content(&self) -> Box<Future<Item = VolumetricWaterContent, Error = Error>>;
+    fn read_water_content(
+        &self,
+        timeout: Duration,
+    ) -> Box<Future<Item = VolumetricWaterContent, Error = Error>>;
 
     /// Measure the current (relative) permittivity of the medium around the sensor.
-    fn read_permittivity(&self) -> Box<Future<Item = RelativePermittivity, Error = Error>>;
+    fn read_permittivity(
+        &self,
+        timeout: Duration,
+    ) -> Box<Future<Item = RelativePermittivity, Error = Error>>;
 
     /// Retrieve the current raw and uncalibrated signal of the sensor.
-    fn read_counts(&self) -> Box<Future<Item = usize, Error = Error>>;
+    fn read_raw_counts(&self, timeout: Duration) -> Box<Future<Item = usize, Error = Error>>;
 }
 
 #[cfg(test)]
