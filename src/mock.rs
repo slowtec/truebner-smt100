@@ -1,12 +1,11 @@
 use super::*;
 
-use futures::future;
 use std::cell::Cell;
 use std::io::{Error, ErrorKind};
 use std::time::{Duration, Instant};
 
-use tokio::prelude::*;
 use tokio::timer::Delay;
+use tokio::util::FutureExt;
 
 pub struct Proxy {
     temperature: Temperature,
@@ -58,46 +57,26 @@ impl Proxy {
         self.raw_counts = raw_counts;
     }
 
-    fn read_value<T>(&self, value: T, timeout: Duration) -> Box<Future<Item = T, Error = Error>>
+    fn read_value<T>(&self, value: T, timeout: Duration) -> impl Future<Item = T, Error = Error>
     where
         T: 'static,
     {
         let deadline = Instant::now() + self.delay;
         let next_error = self.next_error.replace(None);
-        if let Some(error) = next_error {
-            Box::new(
-                Delay::new(deadline)
-                    .then(move |_| future::err(error))
-                    .map_err(|err| {
-                        Error::new(ErrorKind::Other, format!("reading value failed: {}", err))
-                    })
-                    .timeout(timeout)
-                    .map_err(|err| {
-                        Error::new(
-                            ErrorKind::TimedOut,
-                            format!("reading value timed out: {}", err),
-                        )
-                    }),
-            )
+        let result = if let Some(error) = next_error {
+            Err(error)
         } else {
-            Box::new(
-                Delay::new(deadline)
-                    .then(move |_| future::ok(value))
-                    .map_err(|()| {
-                        Error::new(
-                            ErrorKind::Other,
-                            format!("reading value failed unexpectedly"),
-                        )
-                    })
-                    .timeout(timeout)
-                    .map_err(|err| {
-                        Error::new(
-                            ErrorKind::TimedOut,
-                            format!("reading value timed out: {}", err),
-                        )
-                    }),
-            )
-        }
+            Ok(value)
+        };
+        Delay::new(deadline)
+            .then(move |_| result)
+            .map_err(|err| Error::new(ErrorKind::Other, format!("reading value failed: {}", err)))
+            .timeout(timeout)
+            .map_err(move |err| {
+                err.into_inner().unwrap_or_else(|| {
+                    Error::new(ErrorKind::TimedOut, format!("reading value timed out"))
+                })
+            })
     }
 
     /// Implementation of Capabilities::read_temperature()
