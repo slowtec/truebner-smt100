@@ -2,8 +2,10 @@ use super::*;
 
 use futures::future;
 use std::cell::Cell;
-use std::io::Error;
+use std::io::{Error, ErrorKind};
 use std::time::{Duration, Instant};
+
+use tokio::prelude::*;
 use tokio::timer::Delay;
 
 pub struct Proxy {
@@ -56,46 +58,75 @@ impl Proxy {
         self.raw_counts = raw_counts;
     }
 
-    fn read_value<T>(&self, value: T) -> Box<Future<Item = T, Error = Error>>
+    fn read_value<T>(&self, value: T, timeout: Duration) -> Box<Future<Item = T, Error = Error>>
     where
         T: 'static,
     {
         let deadline = Instant::now() + self.delay;
         let next_error = self.next_error.replace(None);
         if let Some(error) = next_error {
-            Box::new(Delay::new(deadline).then(move |_| future::err(error)))
+            Box::new(
+                Delay::new(deadline)
+                    .then(move |_| future::err(error))
+                    .map_err(|err| {
+                        Error::new(ErrorKind::Other, format!("reading value failed: {}", err))
+                    })
+                    .timeout(timeout)
+                    .map_err(|err| {
+                        Error::new(
+                            ErrorKind::TimedOut,
+                            format!("reading value timed out: {}", err),
+                        )
+                    }),
+            )
         } else {
-            Box::new(Delay::new(deadline).then(move |_| future::ok(value)))
+            Box::new(
+                Delay::new(deadline)
+                    .then(move |_| future::ok(value))
+                    .map_err(|()| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("reading value failed unexpectedly"),
+                        )
+                    })
+                    .timeout(timeout)
+                    .map_err(|err| {
+                        Error::new(
+                            ErrorKind::TimedOut,
+                            format!("reading value timed out: {}", err),
+                        )
+                    }),
+            )
         }
     }
 
     /// Implementation of Capabilities::read_temperature()
     pub fn read_temperature(
         &self,
-        _timeout: Duration,
+        timeout: Duration,
     ) -> impl Future<Item = Temperature, Error = Error> {
-        self.read_value(self.temperature)
+        self.read_value(self.temperature, timeout)
     }
 
     /// Implementation of Capabilities::read_water_content()
     pub fn read_water_content(
         &self,
-        _timeout: Duration,
+        timeout: Duration,
     ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        self.read_value(self.water_content)
+        self.read_value(self.water_content, timeout)
     }
 
     /// Implementation of Capabilities::read_permittivity()
     pub fn read_permittivity(
         &self,
-        _timeout: Duration,
+        timeout: Duration,
     ) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        self.read_value(self.permittivity)
+        self.read_value(self.permittivity, timeout)
     }
 
     /// Implementation of Capabilities::read_raw_counts()
-    pub fn read_raw_counts(&self, _timeout: Duration) -> impl Future<Item = usize, Error = Error> {
-        self.read_value(self.raw_counts)
+    pub fn read_raw_counts(&self, timeout: Duration) -> impl Future<Item = usize, Error = Error> {
+        self.read_value(self.raw_counts, timeout)
     }
 }
 
