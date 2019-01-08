@@ -89,18 +89,14 @@ impl Context {
     ) -> impl Future<Item = Temperature, Error = Error> {
         self.context
             .read_holding_registers(0x0000, 0x0001)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("reading temperature failed: {}", err),
-                )
-            })
             .timeout(timeout)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::TimedOut,
-                    format!("reading temperature timed out: {}", err),
-                )
+            .map_err(move |err| {
+                err.into_inner().unwrap_or_else(|| {
+                    Error::new(
+                        ErrorKind::TimedOut,
+                        format!("reading temperature timed out"),
+                    )
+                })
             })
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
@@ -121,18 +117,14 @@ impl Context {
     ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
         self.context
             .read_holding_registers(0x0001, 0x0001)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("reading water content failed: {}", err),
-                )
-            })
             .timeout(timeout)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::TimedOut,
-                    format!("reading water content timed out: {}", err),
-                )
+            .map_err(move |err| {
+                err.into_inner().unwrap_or_else(|| {
+                    Error::new(
+                        ErrorKind::TimedOut,
+                        format!("reading water content timed out"),
+                    )
+                })
             })
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
@@ -161,18 +153,14 @@ impl Context {
     ) -> impl Future<Item = RelativePermittivity, Error = Error> {
         self.context
             .read_holding_registers(0x0002, 0x0001)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("reading permittivity failed: {}", err),
-                )
-            })
             .timeout(timeout)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::TimedOut,
-                    format!("reading permittivity timed out: {}", err),
-                )
+            .map_err(move |err| {
+                err.into_inner().unwrap_or_else(|| {
+                    Error::new(
+                        ErrorKind::TimedOut,
+                        format!("reading permittivity timed out"),
+                    )
+                })
             })
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
@@ -198,18 +186,11 @@ impl Context {
     pub fn read_raw_counts(&self, timeout: Duration) -> impl Future<Item = usize, Error = Error> {
         self.context
             .read_holding_registers(0x0003, 0x0001)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("reading raw counts failed: {}", err),
-                )
-            })
             .timeout(timeout)
-            .map_err(|err| {
-                Error::new(
-                    ErrorKind::TimedOut,
-                    format!("reading raw counts timed out: {}", err),
-                )
+            .map_err(move |err| {
+                err.into_inner().unwrap_or_else(|| {
+                    Error::new(ErrorKind::TimedOut, format!("reading raw counts timed out"))
+                })
             })
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
