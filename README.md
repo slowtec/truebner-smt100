@@ -2,6 +2,8 @@
 
 Device drivers for the [TRUEBNER SMT100 Soil Moisture Sensor](http://www.truebner.de/smt100).
 
+[![Build Status](https://travis-ci.org/slowtec/truebner-smt100.svg?branch=master)](https://travis-ci.org/slowtec/truebner-smt100)
+
 Sensor values are accessible through the generic `Capabilities` trait independent of
 the actual connection and protocol. Proxy objects provide concrete implementations of
 this trait:
