@@ -94,7 +94,7 @@ impl Context {
                 err.into_inner().unwrap_or_else(|| {
                     Error::new(
                         ErrorKind::TimedOut,
-                        format!("reading temperature timed out"),
+                        String::from("reading temperature timed out"),
                     )
                 })
             })
@@ -122,7 +122,7 @@ impl Context {
                 err.into_inner().unwrap_or_else(|| {
                     Error::new(
                         ErrorKind::TimedOut,
-                        format!("reading water content timed out"),
+                        String::from("reading water content timed out"),
                     )
                 })
             })
@@ -158,7 +158,7 @@ impl Context {
                 err.into_inner().unwrap_or_else(|| {
                     Error::new(
                         ErrorKind::TimedOut,
-                        format!("reading permittivity timed out"),
+                        String::from("reading permittivity timed out"),
                     )
                 })
             })
@@ -189,7 +189,10 @@ impl Context {
             .timeout(timeout)
             .map_err(move |err| {
                 err.into_inner().unwrap_or_else(|| {
-                    Error::new(ErrorKind::TimedOut, format!("reading raw counts timed out"))
+                    Error::new(
+                        ErrorKind::TimedOut,
+                        String::from("reading raw counts timed out"),
+                    )
                 })
             })
             .and_then(|rsp| {

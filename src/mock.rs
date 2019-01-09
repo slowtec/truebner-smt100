@@ -64,7 +64,7 @@ impl Proxy {
             .timeout(timeout)
             .map_err(move |err| {
                 err.into_inner().unwrap_or_else(|| {
-                    Error::new(ErrorKind::TimedOut, format!("reading value timed out"))
+                    Error::new(ErrorKind::TimedOut, String::from("reading value timed out"))
                 })
             })
     }
