@@ -16,45 +16,35 @@ pub struct Proxy {
     next_error: Cell<Option<Error>>,
 }
 
+pub trait Driver {
+    fn set_delay(&mut self, delay: Duration);
+
+    fn set_next_error(&mut self, next_error: Option<Error>);
+
+    fn set_temperature(&mut self, temperature: Temperature);
+
+    fn set_water_content(&mut self, water_content: VolumetricWaterContent);
+
+    fn set_permittivity(&mut self, permittivity: RelativePermittivity);
+
+    fn set_raw_counts(&mut self, raw_counts: usize);
+}
+
 impl Proxy {
-    pub fn set_delay(&mut self, delay: Duration) {
-        self.delay = delay;
-    }
-
-    pub fn set_next_error(&mut self, next_error: Option<Error>) {
-        self.next_error.set(next_error);
-    }
-
     pub fn default_temperature() -> Temperature {
         Temperature::from_degree_celsius(20.0)
-    }
-
-    pub fn set_temperature(&mut self, temperature: Temperature) {
-        self.temperature = temperature;
     }
 
     pub fn default_water_content() -> VolumetricWaterContent {
         VolumetricWaterContent::from_percent(30.0)
     }
 
-    pub fn set_water_content(&mut self, water_content: VolumetricWaterContent) {
-        self.water_content = water_content;
-    }
-
     pub fn default_permittivity() -> RelativePermittivity {
         RelativePermittivity::min()
     }
 
-    pub fn set_permittivity(&mut self, permittivity: RelativePermittivity) {
-        self.permittivity = permittivity;
-    }
-
     pub const fn default_raw_counts() -> usize {
         0
-    }
-
-    pub fn set_raw_counts(&mut self, raw_counts: usize) {
-        self.raw_counts = raw_counts;
     }
 
     fn read_value<T>(&self, value: T, timeout: Duration) -> impl Future<Item = T, Error = Error>
@@ -119,6 +109,32 @@ impl Default for Proxy {
             delay: Duration::default(),
             next_error: Cell::new(None),
         }
+    }
+}
+
+impl Driver for Proxy {
+    fn set_delay(&mut self, delay: Duration) {
+        self.delay = delay;
+    }
+
+    fn set_next_error(&mut self, next_error: Option<Error>) {
+        self.next_error.set(next_error);
+    }
+
+    fn set_temperature(&mut self, temperature: Temperature) {
+        self.temperature = temperature;
+    }
+
+    fn set_water_content(&mut self, water_content: VolumetricWaterContent) {
+        self.water_content = water_content;
+    }
+
+    fn set_permittivity(&mut self, permittivity: RelativePermittivity) {
+        self.permittivity = permittivity;
+    }
+
+    fn set_raw_counts(&mut self, raw_counts: usize) {
+        self.raw_counts = raw_counts;
     }
 }
 
