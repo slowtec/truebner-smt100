@@ -146,9 +146,9 @@ mod tests {
     #[test]
     fn water_content_percent() {
         for i in 0..=100 {
-            let wvc = VolumetricWaterContent::from_percent(i as f64);
-            assert!(wvc.is_valid());
-            assert_eq!(wvc.to_percent(), i as f64);
+            let vwc = VolumetricWaterContent::from_percent(i as f64);
+            assert!(vwc.is_valid());
+            assert_eq!(vwc.to_percent(), i as f64);
         }
         assert!(!VolumetricWaterContent::from_percent(-0.5).is_valid());
         assert!(!VolumetricWaterContent::from_percent(100.01).is_valid());
