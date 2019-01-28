@@ -8,9 +8,9 @@ use tokio::timer::Delay;
 use tokio::util::FutureExt;
 
 pub struct Proxy {
-    temperature: TemperatureDegreeCelsius,
-    water_content: VolumetricWaterContentPercent,
-    permittivity: RelativePermittivityRatio,
+    temperature: Temperature,
+    water_content: VolumetricWaterContent,
+    permittivity: RelativePermittivity,
     raw_counts: usize,
     delay: Duration,
     next_error: Cell<Option<Error>>,
@@ -21,26 +21,26 @@ pub trait Driver {
 
     fn set_next_error(&mut self, next_error: Option<Error>);
 
-    fn set_temperature(&mut self, temperature: TemperatureDegreeCelsius);
+    fn set_temperature(&mut self, temperature: Temperature);
 
-    fn set_water_content(&mut self, water_content: VolumetricWaterContentPercent);
+    fn set_water_content(&mut self, water_content: VolumetricWaterContent);
 
-    fn set_permittivity(&mut self, permittivity: RelativePermittivityRatio);
+    fn set_permittivity(&mut self, permittivity: RelativePermittivity);
 
     fn set_raw_counts(&mut self, raw_counts: usize);
 }
 
 impl Proxy {
-    pub fn default_temperature() -> TemperatureDegreeCelsius {
-        TemperatureDegreeCelsius::from(20.0)
+    pub fn default_temperature() -> Temperature {
+        Temperature::from(20.0)
     }
 
-    pub fn default_water_content() -> VolumetricWaterContentPercent {
-        VolumetricWaterContentPercent::from(30.0)
+    pub fn default_water_content() -> VolumetricWaterContent {
+        VolumetricWaterContent::from_percent(30.0)
     }
 
-    pub fn default_permittivity() -> RelativePermittivityRatio {
-        RelativePermittivityRatio::min()
+    pub fn default_permittivity() -> RelativePermittivity {
+        RelativePermittivity::min()
     }
 
     pub const fn default_raw_counts() -> usize {
@@ -73,7 +73,7 @@ impl Proxy {
     pub fn read_temperature(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = TemperatureDegreeCelsius, Error = Error> {
+    ) -> impl Future<Item = Temperature, Error = Error> {
         self.read_value(self.temperature, timeout)
     }
 
@@ -81,7 +81,7 @@ impl Proxy {
     pub fn read_water_content(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = VolumetricWaterContentPercent, Error = Error> {
+    ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
         self.read_value(self.water_content, timeout)
     }
 
@@ -89,7 +89,7 @@ impl Proxy {
     pub fn read_permittivity(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = RelativePermittivityRatio, Error = Error> {
+    ) -> impl Future<Item = RelativePermittivity, Error = Error> {
         self.read_value(self.permittivity, timeout)
     }
 
@@ -121,15 +121,15 @@ impl Driver for Proxy {
         self.next_error.set(next_error);
     }
 
-    fn set_temperature(&mut self, temperature: TemperatureDegreeCelsius) {
+    fn set_temperature(&mut self, temperature: Temperature) {
         self.temperature = temperature;
     }
 
-    fn set_water_content(&mut self, water_content: VolumetricWaterContentPercent) {
+    fn set_water_content(&mut self, water_content: VolumetricWaterContent) {
         self.water_content = water_content;
     }
 
-    fn set_permittivity(&mut self, permittivity: RelativePermittivityRatio) {
+    fn set_permittivity(&mut self, permittivity: RelativePermittivity) {
         self.permittivity = permittivity;
     }
 
@@ -142,21 +142,21 @@ impl Capabilities for Proxy {
     fn read_temperature(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = TemperatureDegreeCelsius, Error = Error>> {
+    ) -> Box<Future<Item = Temperature, Error = Error>> {
         Box::new(self.read_temperature(timeout))
     }
 
     fn read_water_content(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = VolumetricWaterContentPercent, Error = Error>> {
+    ) -> Box<Future<Item = VolumetricWaterContent, Error = Error>> {
         Box::new(self.read_water_content(timeout))
     }
 
     fn read_permittivity(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = RelativePermittivityRatio, Error = Error>> {
+    ) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
         Box::new(self.read_permittivity(timeout))
     }
 
