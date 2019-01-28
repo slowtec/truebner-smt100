@@ -14,35 +14,35 @@ use tokio::prelude::*;
 use tokio_modbus::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct TemperatureRaw(u16);
+struct TemperatureDegreeCelsiusRaw(u16);
 
-impl From<TemperatureRaw> for Temperature {
-    fn from(from: TemperatureRaw) -> Self {
+impl From<TemperatureDegreeCelsiusRaw> for TemperatureDegreeCelsius {
+    fn from(from: TemperatureDegreeCelsiusRaw) -> Self {
         let degree_celsius = f64::from(i32::from(from.0) - 10000i32) / 100f64;
-        Self::from_degree_celsius(degree_celsius)
+        Self::from(degree_celsius)
     }
 }
 
-pub fn decode_temperature_bytes(bytes: &[u8]) -> Result<Temperature> {
+pub fn decode_temperature_bytes(bytes: &[u8]) -> Result<TemperatureDegreeCelsius> {
     let mut rdr = Cursor::new(bytes);
     let raw = rdr.read_u16::<BigEndian>()?;
-    Ok(TemperatureRaw(raw).into())
+    Ok(TemperatureDegreeCelsiusRaw(raw).into())
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct VolumetricWaterContentRaw(u16);
+struct VolumetricWaterContentPercentRaw(u16);
 
-impl From<VolumetricWaterContentRaw> for VolumetricWaterContent {
-    fn from(from: VolumetricWaterContentRaw) -> Self {
+impl From<VolumetricWaterContentPercentRaw> for VolumetricWaterContentPercent {
+    fn from(from: VolumetricWaterContentPercentRaw) -> Self {
         let percent = f64::from(from.0) / 100f64;
-        Self::from_percent(percent)
+        Self::from(percent)
     }
 }
 
-pub fn decode_water_content_bytes(bytes: &[u8]) -> Result<VolumetricWaterContent> {
+pub fn decode_water_content_bytes(bytes: &[u8]) -> Result<VolumetricWaterContentPercent> {
     let mut rdr = Cursor::new(bytes);
     let raw = rdr.read_u16::<BigEndian>()?;
-    let res: VolumetricWaterContent = VolumetricWaterContentRaw(raw).into();
+    let res: VolumetricWaterContentPercent = VolumetricWaterContentPercentRaw(raw).into();
     if res.is_valid() {
         Ok(res)
     } else {
@@ -54,19 +54,19 @@ pub fn decode_water_content_bytes(bytes: &[u8]) -> Result<VolumetricWaterContent
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct RelativePermittivityRaw(u16);
+struct RelativePermittivityRatioRaw(u16);
 
-impl From<RelativePermittivityRaw> for RelativePermittivity {
-    fn from(from: RelativePermittivityRaw) -> Self {
+impl From<RelativePermittivityRatioRaw> for RelativePermittivityRatio {
+    fn from(from: RelativePermittivityRatioRaw) -> Self {
         let ratio = f64::from(from.0) / 100f64;
-        Self::from_ratio(ratio)
+        Self::from(ratio)
     }
 }
 
-pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
+pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivityRatio> {
     let mut rdr = Cursor::new(bytes);
     let raw = rdr.read_u16::<BigEndian>()?;
-    let res: RelativePermittivity = RelativePermittivityRaw(raw).into();
+    let res: RelativePermittivityRatio = RelativePermittivityRatioRaw(raw).into();
     if res.is_valid() {
         Ok(res)
     } else {
@@ -86,7 +86,7 @@ impl Context {
     pub fn read_temperature(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = Temperature, Error = Error> {
+    ) -> impl Future<Item = TemperatureDegreeCelsius, Error = Error> {
         self.context
             .read_holding_registers(0x0000, 0x0001)
             .timeout(timeout)
@@ -100,7 +100,7 @@ impl Context {
             })
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
-                    Ok(TemperatureRaw(raw).into())
+                    Ok(TemperatureDegreeCelsiusRaw(raw).into())
                 } else {
                     Err(Error::new(
                         ErrorKind::InvalidData,
@@ -114,7 +114,7 @@ impl Context {
     pub fn read_water_content(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
+    ) -> impl Future<Item = VolumetricWaterContentPercent, Error = Error> {
         self.context
             .read_holding_registers(0x0001, 0x0001)
             .timeout(timeout)
@@ -128,7 +128,7 @@ impl Context {
             })
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
-                    let val = VolumetricWaterContent::from(VolumetricWaterContentRaw(raw));
+                    let val = VolumetricWaterContentPercent::from(VolumetricWaterContentPercentRaw(raw));
                     if val.is_valid() {
                         Ok(val)
                     } else {
@@ -150,7 +150,7 @@ impl Context {
     pub fn read_permittivity(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = RelativePermittivity, Error = Error> {
+    ) -> impl Future<Item = RelativePermittivityRatio, Error = Error> {
         self.context
             .read_holding_registers(0x0002, 0x0001)
             .timeout(timeout)
@@ -164,7 +164,7 @@ impl Context {
             })
             .and_then(|rsp| {
                 if let [raw] = rsp[..] {
-                    let val = RelativePermittivity::from(RelativePermittivityRaw(raw));
+                    let val = RelativePermittivityRatio::from(RelativePermittivityRatioRaw(raw));
                     if val.is_valid() {
                         Ok(val)
                     } else {
@@ -226,21 +226,21 @@ impl Capabilities for Context {
     fn read_temperature(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = Temperature, Error = Error>> {
+    ) -> Box<Future<Item = TemperatureDegreeCelsius, Error = Error>> {
         Box::new(self.read_temperature(timeout))
     }
 
     fn read_water_content(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = VolumetricWaterContent, Error = Error>> {
+    ) -> Box<Future<Item = VolumetricWaterContentPercent, Error = Error>> {
         Box::new(self.read_water_content(timeout))
     }
 
     fn read_permittivity(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
+    ) -> Box<Future<Item = RelativePermittivityRatio, Error = Error>> {
         Box::new(self.read_permittivity(timeout))
     }
 
@@ -271,7 +271,7 @@ impl SlaveProxy {
     pub fn read_temperature(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = Temperature, Error = Error> {
+    ) -> impl Future<Item = TemperatureDegreeCelsius, Error = Error> {
         let mut context = self.context.borrow_mut();
         context.set_slave(self.slave);
         context.read_temperature(timeout)
@@ -280,7 +280,7 @@ impl SlaveProxy {
     pub fn read_water_content(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
+    ) -> impl Future<Item = VolumetricWaterContentPercent, Error = Error> {
         let mut context = self.context.borrow_mut();
         context.set_slave(self.slave);
         context.read_water_content(timeout)
@@ -289,7 +289,7 @@ impl SlaveProxy {
     pub fn read_permittivity(
         &self,
         timeout: Duration,
-    ) -> impl Future<Item = RelativePermittivity, Error = Error> {
+    ) -> impl Future<Item = RelativePermittivityRatio, Error = Error> {
         let mut context = self.context.borrow_mut();
         context.set_slave(self.slave);
         context.read_permittivity(timeout)
@@ -306,21 +306,21 @@ impl Capabilities for SlaveProxy {
     fn read_temperature(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = Temperature, Error = Error>> {
+    ) -> Box<Future<Item = TemperatureDegreeCelsius, Error = Error>> {
         Box::new(self.read_temperature(timeout))
     }
 
     fn read_water_content(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = VolumetricWaterContent, Error = Error>> {
+    ) -> Box<Future<Item = VolumetricWaterContentPercent, Error = Error>> {
         Box::new(self.read_water_content(timeout))
     }
 
     fn read_permittivity(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
+    ) -> Box<Future<Item = RelativePermittivityRatio, Error = Error>> {
         Box::new(self.read_permittivity(timeout))
     }
 
@@ -336,23 +336,23 @@ mod tests {
     #[test]
     fn decode_temperature() {
         assert_eq!(
-            Temperature::from_degree_celsius(-40.0),
+            TemperatureDegreeCelsius::from(-40.0),
             decode_temperature_bytes(&[0x17, 0x70]).unwrap()
         );
         assert_eq!(
-            Temperature::from_degree_celsius(0.0),
+            TemperatureDegreeCelsius::from(0.0),
             decode_temperature_bytes(&[0x27, 0x10]).unwrap()
         );
         assert_eq!(
-            Temperature::from_degree_celsius(27.97),
+            TemperatureDegreeCelsius::from(27.97),
             decode_temperature_bytes(&[0x31, 0xFD]).unwrap()
         );
         assert_eq!(
-            Temperature::from_degree_celsius(60.0),
+            TemperatureDegreeCelsius::from(60.0),
             decode_temperature_bytes(&[0x3E, 0x80]).unwrap()
         );
         assert_eq!(
-            Temperature::from_degree_celsius(80.0),
+            TemperatureDegreeCelsius::from(80.0),
             decode_temperature_bytes(&[0x46, 0x50]).unwrap()
         );
     }
@@ -361,15 +361,15 @@ mod tests {
     fn decode_water_content() {
         // Valid range
         assert_eq!(
-            VolumetricWaterContent::from_percent(0.0),
+            VolumetricWaterContentPercent::from(0.0),
             decode_water_content_bytes(&[0x00, 0x00]).unwrap()
         );
         assert_eq!(
-            VolumetricWaterContent::from_percent(34.4),
+            VolumetricWaterContentPercent::from(34.4),
             decode_water_content_bytes(&[0x0D, 0x70]).unwrap()
         );
         assert_eq!(
-            VolumetricWaterContent::from_percent(100.0),
+            VolumetricWaterContentPercent::from(100.0),
             decode_water_content_bytes(&[0x27, 0x10]).unwrap()
         );
         // Invalid range
@@ -381,11 +381,11 @@ mod tests {
     fn decode_permittivity() {
         // Valid range
         assert_eq!(
-            RelativePermittivity::from_ratio(1.0),
+            RelativePermittivityRatio::from(1.0),
             decode_permittivity_bytes(&[0x00, 0x64]).unwrap()
         );
         assert_eq!(
-            RelativePermittivity::from_ratio(15.2),
+            RelativePermittivityRatio::from(15.2),
             decode_permittivity_bytes(&[0x05, 0xF0]).unwrap()
         );
         // Invalid range
