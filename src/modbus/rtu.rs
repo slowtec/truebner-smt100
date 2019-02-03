@@ -25,12 +25,10 @@ pub const SERIAL_PORT_SETTINGS: SerialPortSettings = SerialPortSettings {
     timeout: Duration::from_secs(0),
 };
 
-pub fn connect_path<P>(
+pub fn connect_path(
     handle: &Handle,
-    tty_path: P,
+    tty_path: impl AsRef<Path>,
 ) -> Box<Future<Item = super::Context, Error = Error>>
-where
-    P: AsRef<Path>,
 {
     match Serial::from_path_with_handle(tty_path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle())
     {
