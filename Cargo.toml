@@ -11,16 +11,18 @@ repository = "https://github.com/slowtec/truebner-smt100"
 edition = "2018"
 
 [patch.crates-io]
-tokio-modbus = { git = "https://github.com/uklotzde/tokio-modbus", branch = "new_api" }
+tokio-modbus = { git = "https://github.com/slowtec/tokio-modbus", branch = "master" }
 
 [dependencies]
 byteorder = "1"
 futures = "0.1"
+log = "0.4"
 tokio = "0.1"
 tokio-core = "0.1"
+tokio-io = "0.1"
 
 tokio-modbus = { version = "0.3", default-features = false, features = ["rtu"], optional = true }
-tokio-serial = { version = "3.1", optional = true }
+tokio-serial = { version = "3.2", optional = true }
 
 [features]
 default = ["modbus-rtu", "mock"]

@@ -11,6 +11,7 @@ use std::{
     rc::Rc,
 };
 use tokio::prelude::*;
+
 use tokio_modbus::prelude::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -77,17 +78,35 @@ pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
     }
 }
 
-pub struct Context {
-    context: client::Context,
+pub struct SlaveProxy {
+    context: Rc<RefCell<client::Context>>,
+    slave: Slave,
 }
 
-impl Context {
-    /// Implementation of Capabilities::read_temperature()
+impl SlaveProxy {
+    pub fn new(context: Rc<RefCell<client::Context>>, slave: Slave) -> Self {
+        Self { context, slave }
+    }
+
+    pub fn slave(&self) -> Slave {
+        self.slave
+    }
+
+    /// Switch the Modbus slave address of all connected devices.
+    pub fn broadcast_slave(&self) -> impl Future<Item = (), Error = Error> {
+        let slave_id: SlaveId = self.slave.into();
+        let mut context = self.context.borrow_mut();
+        context.set_slave(rtu::BROADCAST_SLAVE);
+        context.write_single_register(0x0004, u16::from(slave_id))
+    }
+
     pub fn read_temperature(
         &self,
         timeout: Duration,
     ) -> impl Future<Item = Temperature, Error = Error> {
-        self.context
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context
             .read_holding_registers(0x0000, 0x0001)
             .timeout(timeout)
             .map_err(move |err| {
@@ -110,12 +129,13 @@ impl Context {
             })
     }
 
-    /// Implementation of Capabilities::read_water_content()
     pub fn read_water_content(
         &self,
         timeout: Duration,
     ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        self.context
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context
             .read_holding_registers(0x0001, 0x0001)
             .timeout(timeout)
             .map_err(move |err| {
@@ -146,12 +166,13 @@ impl Context {
             })
     }
 
-    /// Implementation of Capabilities::read_permittivity()
     pub fn read_permittivity(
         &self,
         timeout: Duration,
     ) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        self.context
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context
             .read_holding_registers(0x0002, 0x0001)
             .timeout(timeout)
             .map_err(move |err| {
@@ -182,9 +203,10 @@ impl Context {
             })
     }
 
-    /// Implementation of Capabilities::read_raw_counts()
     pub fn read_raw_counts(&self, timeout: Duration) -> impl Future<Item = usize, Error = Error> {
-        self.context
+        let mut context = self.context.borrow_mut();
+        context.set_slave(self.slave);
+        context
             .read_holding_registers(0x0003, 0x0001)
             .timeout(timeout)
             .map_err(move |err| {
@@ -205,100 +227,6 @@ impl Context {
                     ))
                 }
             })
-    }
-
-    /// Permanently change the Modbus slave address/id of the device.
-    pub fn init_slave(&self, slave: Slave) -> impl Future<Item = Slave, Error = Error> {
-        let slave_id: SlaveId = slave.into();
-        self.context
-            .write_single_register(0x0004, u16::from(slave_id))
-            .map(move |()| slave)
-    }
-}
-
-impl SlaveContext for Context {
-    fn set_slave(&mut self, slave: Slave) {
-        self.context.set_slave(slave)
-    }
-}
-
-impl Capabilities for Context {
-    fn read_temperature(
-        &self,
-        timeout: Duration,
-    ) -> Box<Future<Item = Temperature, Error = Error>> {
-        Box::new(self.read_temperature(timeout))
-    }
-
-    fn read_water_content(
-        &self,
-        timeout: Duration,
-    ) -> Box<Future<Item = VolumetricWaterContent, Error = Error>> {
-        Box::new(self.read_water_content(timeout))
-    }
-
-    fn read_permittivity(
-        &self,
-        timeout: Duration,
-    ) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
-        Box::new(self.read_permittivity(timeout))
-    }
-
-    fn read_raw_counts(&self, timeout: Duration) -> Box<Future<Item = usize, Error = Error>> {
-        Box::new(self.read_raw_counts(timeout))
-    }
-}
-
-pub struct SlaveProxy {
-    context: Rc<RefCell<Context>>,
-    slave: Slave,
-}
-
-impl SlaveProxy {
-    pub fn new(context: Rc<RefCell<Context>>, slave: Slave) -> Self {
-        Self { context, slave }
-    }
-
-    pub fn from_context(context: Context, slave: Slave) -> Self {
-        let context = Rc::new(RefCell::new(context));
-        Self::new(context, slave)
-    }
-
-    pub fn context(&self) -> Rc<RefCell<Context>> {
-        Rc::clone(&self.context)
-    }
-
-    pub fn read_temperature(
-        &self,
-        timeout: Duration,
-    ) -> impl Future<Item = Temperature, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_temperature(timeout)
-    }
-
-    pub fn read_water_content(
-        &self,
-        timeout: Duration,
-    ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_water_content(timeout)
-    }
-
-    pub fn read_permittivity(
-        &self,
-        timeout: Duration,
-    ) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_permittivity(timeout)
-    }
-
-    pub fn read_raw_counts(&self, timeout: Duration) -> impl Future<Item = usize, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context.read_raw_counts(timeout)
     }
 }
 

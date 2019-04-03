@@ -3,7 +3,8 @@ use super::*;
 use futures::{future, Future};
 use std::{io::Error, path::Path, time::Duration};
 use tokio_core::reactor::Handle;
-use tokio_modbus::client::rtu::connect_slave;
+use tokio_io::{AsyncRead, AsyncWrite};
+use tokio_modbus::client::{rtu::connect_slave, Context as ClientContext};
 use tokio_serial::{DataBits, FlowControl, Parity, Serial, SerialPortSettings, StopBits};
 
 /// The fixed broadcast address of all sensors that cannot be altered.
@@ -25,17 +26,30 @@ pub const SERIAL_PORT_SETTINGS: SerialPortSettings = SerialPortSettings {
     timeout: Duration::from_secs(0),
 };
 
+pub fn connect<T: AsyncRead + AsyncWrite + 'static>(
+    handle: &Handle,
+    transport: T,
+) -> impl Future<Item = ClientContext, Error = Error> {
+    connect_slave(handle, transport, BROADCAST_SLAVE)
+}
+
 pub fn connect_path(
     handle: &Handle,
-    tty_path: impl AsRef<Path>,
-) -> Box<Future<Item = super::Context, Error = Error>>
-{
-    match Serial::from_path_with_handle(tty_path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle())
-    {
-        Ok(port) => Box::new(
-            connect_slave(handle, port, BROADCAST_SLAVE)
-                .and_then(|context| Ok(super::Context { context })),
-        ),
+    path: impl AsRef<Path>,
+) -> Box<Future<Item = ClientContext, Error = Error>> {
+    log::info!("Connecting to serial port {}", path.as_ref().display());
+    match Serial::from_path_with_handle(path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle()) {
+        Ok(mut serial) => {
+            #[cfg(unix)]
+            serial
+                .set_exclusive(false)
+                .map_err(|err| {
+                    log::error!("Failed to share serial port: {}", err);
+                    err
+                })
+                .unwrap();
+            Box::new(connect(handle, serial))
+        }
         Err(err) => Box::new(future::err(err)),
     }
 }

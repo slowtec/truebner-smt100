@@ -1,7 +1,7 @@
 #[cfg(feature = "modbus-rtu")]
 pub fn main() {
     use futures::Future;
-    use std::time::Duration;
+    use std::{rc::Rc, cell::RefCell, time::Duration};
     use tokio_core::reactor::Core;
     use tokio_modbus::prelude::*;
 
@@ -19,14 +19,14 @@ pub fn main() {
 
     let task = modbus::rtu::connect_path(&handle, tty_path)
         .and_then(move |context| {
-            println!("Resetting Modbus slave address to {:?}", slave);
-            context
-                .init_slave(slave)
-                .and_then(move |rsp| Ok((context, rsp)))
+            println!("Creating Modbus slave proxy for {:?}", slave);
+            Ok(modbus::SlaveProxy::new(Rc::new(RefCell::new(context)), slave))
         })
-        .and_then(move |(context, slave)| {
-            println!("Reset Modbus slave address to {:?}", slave);
-            let proxy = modbus::SlaveProxy::from_context(context, slave);
+        .and_then(|proxy| {
+            println!("Resetting Modbus slave address to {:?}", proxy.slave());
+            proxy.broadcast_slave().and_then(move |()| Ok(proxy))
+        })
+        .and_then(|proxy| {
             println!("Reading (thermodynamic) temperature...");
             proxy
                 .read_temperature(timeout)
