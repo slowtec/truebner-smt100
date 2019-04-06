@@ -24,6 +24,11 @@ tokio-io = "0.1"
 tokio-modbus = { version = "0.3", default-features = false, features = ["rtu"], optional = true }
 tokio-serial = { version = "3.2", optional = true }
 
+[dev-dependencies]
+chrono = "*"
+env_logger = "*"
+stream-cancel = "*"
+
 [features]
 default = ["modbus-rtu", "mock"]
 mock = []

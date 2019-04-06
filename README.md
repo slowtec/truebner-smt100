@@ -11,6 +11,27 @@ this trait:
 - Modbus RTU
 - Mock (only for testing and simulation)
 
+## Example
+
+### Build
+
+```sh
+cargo build --example modbus-rtu
+```
+
+### Run
+
+Set the log level to `info` for observing the current measurements:
+
+```sh
+RUST_LOG=info cargo run --example modbus-rtu
+```
+
+Due to known limitations in `tokio-proto` the serial port within the Modbus RTU
+context needs to be reconnected after a slave failed to send a response in time,
+i.e. after the request was aborted by the client due to a timeout. The example
+demonstrates how to cope with this situation and displays a warning message.
+
 ## Resources
 
 - [SMT100 Product Page](http://www.truebner.de/en/smt100)

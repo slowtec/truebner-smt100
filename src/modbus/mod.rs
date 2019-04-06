@@ -88,6 +88,10 @@ impl SlaveProxy {
         Self { context, slave }
     }
 
+    pub fn reset_context(&mut self, context: Rc<RefCell<client::Context>>) {
+        self.context = context;
+    }
+
     pub fn slave(&self) -> Slave {
         self.slave
     }
