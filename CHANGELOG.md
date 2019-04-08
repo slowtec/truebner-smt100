@@ -18,5 +18,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[Unreleased]: https://github.com/slowtec/truebner-smt100/v0.1.0...master
+[Unreleased]: https://github.com/slowtec/truebner-smt100/compare/v0.1.0...master
 [0.1.0]: https://github.com/slowtec/truebner-smt100/releases/v0.1.0
