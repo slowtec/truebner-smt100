@@ -1,7 +1,7 @@
 [package]
 name = "truebner-smt100"
 description = "Drivers for the TRUEBNER SMT100 Soil Moisture Sensor"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["slowtec GmbH <post@slowtec.de>"]
 license = "MIT/Apache-2.0"
 readme = "README.md"
@@ -11,6 +11,10 @@ homepage = "https://github.com/slowtec/truebner-smt100"
 repository = "https://github.com/slowtec/truebner-smt100"
 edition = "2018"
 
+[patch.crates-io]
+# Public crate patches
+tokio-modbus = { git = "https://github.com/uklotzde/tokio-modbus", branch = "shared_context" }
+
 [dependencies]
 byteorder = "1"
 futures = "0.1"
@@ -18,7 +22,7 @@ log = "~0.4"
 tokio = "0.1"
 tokio-core = "0.1"
 tokio-io = "0.1"
-tokio-modbus = { version = "~0.3.1", default-features = false, features = ["rtu"], optional = true }
+tokio-modbus = { version = "~0.3.2", default-features = false, features = ["rtu"], optional = true }
 tokio-serial = { version = "3.2", optional = true }
 
 [dev-dependencies]

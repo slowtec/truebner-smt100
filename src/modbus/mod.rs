@@ -12,7 +12,28 @@ use std::{
 };
 use tokio::prelude::*;
 
-use tokio_modbus::prelude::*;
+use tokio_modbus::{
+    client::util::{reconnect_shared_context, SharedContext},
+    prelude::*,
+};
+
+/// The fixed broadcast address of all sensors that cannot be altered.
+///
+/// Warning: This address should only be used for configuration purposes,
+/// i.e. for initially setting the Modbus slave address of each connected
+/// device. All other requests to this address are answered with the
+/// slave address 0 (= broadcast) and might be rejected by _tokio-modbus_!
+pub const BROADCAST_SLAVE: Slave = Slave(0xFD);
+
+/// Switch the Modbus slave address of all connected devices.
+pub fn broadcast_slave(
+    context: &mut client::Context,
+    slave: Slave,
+) -> impl Future<Item = (), Error = Error> {
+    context.set_slave(rtu::BROADCAST_SLAVE);
+    let slave_id: SlaveId = slave.into();
+    context.write_single_register(0x0004, u16::from(slave_id))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct TemperatureRaw(u16);
@@ -28,6 +49,33 @@ pub fn decode_temperature_bytes(bytes: &[u8]) -> Result<Temperature> {
     let mut rdr = Cursor::new(bytes);
     let raw = rdr.read_u16::<BigEndian>()?;
     Ok(TemperatureRaw(raw).into())
+}
+
+pub fn read_temperature(
+    context: &mut client::Context,
+    timeout: Duration,
+) -> impl Future<Item = Temperature, Error = Error> {
+    context
+        .read_holding_registers(0x0000, 0x0001)
+        .timeout(timeout)
+        .map_err(move |err| {
+            err.into_inner().unwrap_or_else(|| {
+                Error::new(
+                    ErrorKind::TimedOut,
+                    String::from("reading temperature timed out"),
+                )
+            })
+        })
+        .and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                Ok(TemperatureRaw(raw).into())
+            } else {
+                Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!("unexpected temperature data: {:?}", rsp),
+                ))
+            }
+        })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -54,6 +102,41 @@ pub fn decode_water_content_bytes(bytes: &[u8]) -> Result<VolumetricWaterContent
     }
 }
 
+pub fn read_water_content(
+    context: &mut client::Context,
+    timeout: Duration,
+) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
+    context
+        .read_holding_registers(0x0001, 0x0001)
+        .timeout(timeout)
+        .map_err(move |err| {
+            err.into_inner().unwrap_or_else(|| {
+                Error::new(
+                    ErrorKind::TimedOut,
+                    String::from("reading water content timed out"),
+                )
+            })
+        })
+        .and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                let val = VolumetricWaterContent::from(VolumetricWaterContentRaw(raw));
+                if val.is_valid() {
+                    Ok(val)
+                } else {
+                    Err(Error::new(
+                        ErrorKind::InvalidData,
+                        format!("invalid water content value: {}", val),
+                    ))
+                }
+            } else {
+                Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!("unexpected water content data: {:?}", rsp),
+                ))
+            }
+        })
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct RelativePermittivityRaw(u16);
 
@@ -78,159 +161,162 @@ pub fn decode_permittivity_bytes(bytes: &[u8]) -> Result<RelativePermittivity> {
     }
 }
 
+pub fn read_permittivity(
+    context: &mut client::Context,
+    timeout: Duration,
+) -> impl Future<Item = RelativePermittivity, Error = Error> {
+    context
+        .read_holding_registers(0x0002, 0x0001)
+        .timeout(timeout)
+        .map_err(move |err| {
+            err.into_inner().unwrap_or_else(|| {
+                Error::new(
+                    ErrorKind::TimedOut,
+                    String::from("reading permittivity timed out"),
+                )
+            })
+        })
+        .and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                let val = RelativePermittivity::from(RelativePermittivityRaw(raw));
+                if val.is_valid() {
+                    Ok(val)
+                } else {
+                    Err(Error::new(
+                        ErrorKind::InvalidData,
+                        format!("invalid permittivity value: {}", val),
+                    ))
+                }
+            } else {
+                Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!("unexpected permittivity data: {:?}", rsp),
+                ))
+            }
+        })
+}
+
+pub fn read_raw_counts(
+    context: &mut client::Context,
+    timeout: Duration,
+) -> impl Future<Item = usize, Error = Error> {
+    context
+        .read_holding_registers(0x0003, 0x0001)
+        .timeout(timeout)
+        .map_err(move |err| {
+            err.into_inner().unwrap_or_else(|| {
+                Error::new(
+                    ErrorKind::TimedOut,
+                    String::from("reading raw counts timed out"),
+                )
+            })
+        })
+        .and_then(|rsp| {
+            if let [raw] = rsp[..] {
+                Ok(raw.into())
+            } else {
+                Err(Error::new(
+                    ErrorKind::InvalidData,
+                    format!("unexpected raw counts data: {:?}", rsp),
+                ))
+            }
+        })
+}
+
 pub struct SlaveProxy {
-    context: Rc<RefCell<client::Context>>,
     slave: Slave,
+    shared_context: Rc<RefCell<SharedContext>>,
 }
 
 impl SlaveProxy {
-    pub fn new(context: Rc<RefCell<client::Context>>, slave: Slave) -> Self {
-        Self { context, slave }
-    }
-
-    pub fn reset_context(&mut self, context: Rc<RefCell<client::Context>>) {
-        self.context = context;
+    pub fn new(slave: Slave, shared_context: Rc<RefCell<SharedContext>>) -> Self {
+        Self {
+            slave,
+            shared_context,
+        }
     }
 
     pub fn slave(&self) -> Slave {
         self.slave
     }
 
+    pub fn reconnect(self) -> impl Future<Item = Self, Error = (Error, Self)> {
+        reconnect_shared_context(&self.shared_context).then(move |res| match res {
+            Ok(()) => Ok(self),
+            Err(err) => Err((err, self)),
+        })
+    }
+
+    fn shared_context(&self) -> Result<Rc<RefCell<client::Context>>> {
+        if let Some(context) = self.shared_context.borrow().share_context() {
+            Ok(context)
+        } else {
+            Err(Error::new(ErrorKind::NotConnected, "No shared context"))
+        }
+    }
+
     /// Switch the Modbus slave address of all connected devices.
     pub fn broadcast_slave(&self) -> impl Future<Item = (), Error = Error> {
-        let slave_id: SlaveId = self.slave.into();
-        let mut context = self.context.borrow_mut();
-        context.set_slave(rtu::BROADCAST_SLAVE);
-        context.write_single_register(0x0004, u16::from(slave_id))
+        match self.shared_context() {
+            Ok(shared_context) => future::Either::A(self::broadcast_slave(
+                &mut shared_context.borrow_mut(),
+                self.slave,
+            )),
+            Err(err) => future::Either::B(future::err(err)),
+        }
     }
 
     pub fn read_temperature(
         &self,
         timeout: Duration,
     ) -> impl Future<Item = Temperature, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context
-            .read_holding_registers(0x0000, 0x0001)
-            .timeout(timeout)
-            .map_err(move |err| {
-                err.into_inner().unwrap_or_else(|| {
-                    Error::new(
-                        ErrorKind::TimedOut,
-                        String::from("reading temperature timed out"),
-                    )
-                })
-            })
-            .and_then(|rsp| {
-                if let [raw] = rsp[..] {
-                    Ok(TemperatureRaw(raw).into())
-                } else {
-                    Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!("unexpected temperature data: {:?}", rsp),
-                    ))
-                }
-            })
+        match self.shared_context() {
+            Ok(shared_context) => {
+                let mut context = shared_context.borrow_mut();
+                context.set_slave(self.slave);
+                future::Either::A(self::read_temperature(&mut context, timeout))
+            }
+            Err(err) => future::Either::B(future::err(err)),
+        }
     }
 
     pub fn read_water_content(
         &self,
         timeout: Duration,
     ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context
-            .read_holding_registers(0x0001, 0x0001)
-            .timeout(timeout)
-            .map_err(move |err| {
-                err.into_inner().unwrap_or_else(|| {
-                    Error::new(
-                        ErrorKind::TimedOut,
-                        String::from("reading water content timed out"),
-                    )
-                })
-            })
-            .and_then(|rsp| {
-                if let [raw] = rsp[..] {
-                    let val = VolumetricWaterContent::from(VolumetricWaterContentRaw(raw));
-                    if val.is_valid() {
-                        Ok(val)
-                    } else {
-                        Err(Error::new(
-                            ErrorKind::InvalidData,
-                            format!("invalid water content value: {}", val),
-                        ))
-                    }
-                } else {
-                    Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!("unexpected water content data: {:?}", rsp),
-                    ))
-                }
-            })
+        match self.shared_context() {
+            Ok(shared_context) => {
+                let mut context = shared_context.borrow_mut();
+                context.set_slave(self.slave);
+                future::Either::A(self::read_water_content(&mut context, timeout))
+            }
+            Err(err) => future::Either::B(future::err(err)),
+        }
     }
 
     pub fn read_permittivity(
         &self,
         timeout: Duration,
     ) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context
-            .read_holding_registers(0x0002, 0x0001)
-            .timeout(timeout)
-            .map_err(move |err| {
-                err.into_inner().unwrap_or_else(|| {
-                    Error::new(
-                        ErrorKind::TimedOut,
-                        String::from("reading permittivity timed out"),
-                    )
-                })
-            })
-            .and_then(|rsp| {
-                if let [raw] = rsp[..] {
-                    let val = RelativePermittivity::from(RelativePermittivityRaw(raw));
-                    if val.is_valid() {
-                        Ok(val)
-                    } else {
-                        Err(Error::new(
-                            ErrorKind::InvalidData,
-                            format!("invalid permittivity value: {}", val),
-                        ))
-                    }
-                } else {
-                    Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!("unexpected permittivity data: {:?}", rsp),
-                    ))
-                }
-            })
+        match self.shared_context() {
+            Ok(shared_context) => {
+                let mut context = shared_context.borrow_mut();
+                context.set_slave(self.slave);
+                future::Either::A(self::read_permittivity(&mut context, timeout))
+            }
+            Err(err) => future::Either::B(future::err(err)),
+        }
     }
 
     pub fn read_raw_counts(&self, timeout: Duration) -> impl Future<Item = usize, Error = Error> {
-        let mut context = self.context.borrow_mut();
-        context.set_slave(self.slave);
-        context
-            .read_holding_registers(0x0003, 0x0001)
-            .timeout(timeout)
-            .map_err(move |err| {
-                err.into_inner().unwrap_or_else(|| {
-                    Error::new(
-                        ErrorKind::TimedOut,
-                        String::from("reading raw counts timed out"),
-                    )
-                })
-            })
-            .and_then(|rsp| {
-                if let [raw] = rsp[..] {
-                    Ok(raw.into())
-                } else {
-                    Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!("unexpected raw counts data: {:?}", rsp),
-                    ))
-                }
-            })
+        match self.shared_context() {
+            Ok(shared_context) => {
+                let mut context = shared_context.borrow_mut();
+                context.set_slave(self.slave);
+                future::Either::A(self::read_raw_counts(&mut context, timeout))
+            }
+            Err(err) => future::Either::B(future::err(err)),
+        }
     }
 }
 

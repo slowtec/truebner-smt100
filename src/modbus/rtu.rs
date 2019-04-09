@@ -39,17 +39,7 @@ pub fn connect_path(
 ) -> Box<dyn Future<Item = ClientContext, Error = Error>> {
     log::info!("Connecting to serial port {}", path.as_ref().display());
     match Serial::from_path_with_handle(path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle()) {
-        Ok(mut serial) => {
-            #[cfg(unix)]
-            serial
-                .set_exclusive(false)
-                .map_err(|err| {
-                    log::error!("Failed to share serial port: {}", err);
-                    err
-                })
-                .unwrap();
-            Box::new(connect(handle, serial))
-        }
+        Ok(serial) => Box::new(connect(handle, serial)),
         Err(err) => Box::new(future::err(err)),
     }
 }

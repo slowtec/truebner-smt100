@@ -7,7 +7,7 @@ pub fn main() {
     use stream_cancel::{StreamExt, Tripwire};
     use tokio::timer::Interval;
     use tokio_core::reactor::{Core, Handle};
-    use tokio_modbus::prelude::{client::Context as ModbusContext, *};
+    use tokio_modbus::prelude::{*, client::util::*};
 
     use truebner_smt100::{modbus, *};
 
@@ -22,24 +22,30 @@ pub fn main() {
     let mut core = Core::new().unwrap();
 
     #[derive(Debug, Clone)]
-    struct Config {
+    struct ContextConfig {
         handle: Handle,
         tty_path: String,
+    };
+
+    impl NewContext for ContextConfig {
+        fn new_context(&self) -> Box<dyn Future<Item = client::Context, Error = Error>> {
+            Box::new(modbus::rtu::connect_path(&self.handle, &self.tty_path))
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    struct SlaveConfig {
         slave: Slave,
         cycle_time: Duration,
         timeout: Duration,
     };
 
-    impl Config {
-        fn connect(&self) -> impl Future<Item = ModbusContext, Error = Error> {
-            modbus::rtu::connect_path(&self.handle, &self.tty_path)
-        }
-    }
-
     // TODO: Parse parameters and options from command-line arguments
-    let config = Config {
+    let context_config = ContextConfig {
         handle: core.handle(),
         tty_path: "/dev/ttyUSB0".to_owned(),
+    };
+    let slave_config = SlaveConfig {
         slave: Slave::min_device(),
         cycle_time: Duration::from_millis(1000),
         timeout: Duration::from_millis(500),
@@ -67,99 +73,112 @@ pub fn main() {
         permittivity: Option<Measurement<RelativePermittivity>>,
     }
 
-    struct State {
+    // Only a single slave sensor is used for demonstration purposes here.
+    // A typical application will use multiple slaves that all share
+    // the same Modbus environment, RTU client context and bus wiring,
+    // i.e. multiple sensors and actuators are all connected to a single
+    // serial port.
+    struct ControlLoop {
+        // Only shared with the single proxy and otherwise unused within the
+        // control loop. Just to demonstrate how to share the Modbus context
+        // and how to recover from communication errors by reconnecting.
+        shared_context: Rc<RefCell<SharedContext>>,
+
+        config: SlaveConfig,
         proxy: modbus::SlaveProxy,
         measurements: Measurements,
     };
 
-    impl State {
-        pub fn new(context: &Rc<RefCell<ModbusContext>>, slave: Slave) -> Self {
+    impl ControlLoop {
+        pub fn new(config: SlaveConfig, new_context: Box<dyn NewContext>) -> Self {
+            let shared_context = Rc::new(RefCell::new(SharedContext::new(None, new_context)));
+            let proxy = modbus::SlaveProxy::new(config.slave, Rc::clone(&shared_context));
             Self {
-                proxy: modbus::SlaveProxy::new(Rc::clone(context), slave),
+                shared_context,
+                config,
+                proxy,
                 measurements: Default::default(),
             }
         }
 
-        pub fn reset_context(&mut self, context: &Rc<RefCell<ModbusContext>>) {
-            self.proxy.reset_context(Rc::clone(context));
-        }
-    }
-
-    struct ControlLoop {
-        config: Config,
-        state: State,
-    };
-
-    impl ControlLoop {
-        pub fn connect(config: Config) -> impl Future<Item = Self, Error = Error> {
-            config.connect().map(move |context| {
-                let state = State::new(&Rc::new(RefCell::new(context)), config.slave);
-                Self { config, state }
-            })
-        }
-
-        fn reconnect(mut self) -> impl Future<Item = Self, Error = (Self, Error)> {
-            self.config.connect().then(move |res| match res {
-                Ok(context) => {
-                    self.state.reset_context(&Rc::new(RefCell::new(context)));
-                    Ok(self)
+        fn reconnect(self) -> impl Future<Item = Self, Error = (Error, Self)> {
+            let shared_context = self.shared_context;
+            let config = self.config;
+            let measurements = self.measurements;
+            self.proxy.reconnect().then(move |res| {
+                match res {
+                    Ok(proxy) => {
+                        let this = Self {
+                            shared_context,
+                            config,
+                            proxy,
+                            measurements,
+                        };
+                        Ok(this)
+                    }
+                    Err((err, proxy)) => {
+                        let this = Self {
+                            shared_context,
+                            config,
+                            proxy,
+                            measurements,
+                        };
+                        Err((err, this))
+                    }
                 }
-                Err(err) => Err((self, err)),
             })
         }
 
-        pub fn measure_temperature(mut self) -> impl Future<Item = Self, Error = (Self, Error)> {
-            self.state
+        pub fn measure_temperature(mut self) -> impl Future<Item = Self, Error = (Error, Self)> {
+            self
                 .proxy
                 .read_temperature(self.config.timeout)
                 .then(move |res| match res {
                     Ok(val) => {
-                        self.state.measurements.temperature = Some(Measurement::new(val));
+                        self.measurements.temperature = Some(Measurement::new(val));
                         Ok(self)
                     }
-                    Err(err) => Err((self, err)),
+                    Err(err) => Err((err, self)),
                 })
         }
 
-        pub fn measure_water_content(mut self) -> impl Future<Item = Self, Error = (Self, Error)> {
-            self.state
+        pub fn measure_water_content(mut self) -> impl Future<Item = Self, Error = (Error, Self)> {
+            self
                 .proxy
                 .read_water_content(self.config.timeout)
                 .then(move |res| match res {
                     Ok(val) => {
-                        self.state.measurements.water_content = Some(Measurement::new(val));
+                        self.measurements.water_content = Some(Measurement::new(val));
                         Ok(self)
                     }
-                    Err(err) => Err((self, err)),
+                    Err(err) => Err((err, self)),
                 })
         }
 
-        pub fn measure_permittivity(mut self) -> impl Future<Item = Self, Error = (Self, Error)> {
-            self.state
+        pub fn measure_permittivity(mut self) -> impl Future<Item = Self, Error = (Error, Self)> {
+            self
                 .proxy
                 .read_permittivity(self.config.timeout)
                 .then(move |res| match res {
                     Ok(val) => {
-                        self.state.measurements.permittivity = Some(Measurement::new(val));
+                        self.measurements.permittivity = Some(Measurement::new(val));
                         Ok(self)
                     }
-                    Err(err) => Err((self, err)),
+                    Err(err) => Err((err, self)),
                 })
         }
 
         pub fn recover_after_error(self, err: &Error) -> impl Future<Item = Self, Error = ()> {
             log::warn!(
-                "Reconnecting serial port {} after error: {}",
-                self.config.tty_path,
+                "Reconnecting after error: {}",
                 err
             );
             self.reconnect().then(move |res| {
                 let this = match res {
                     Ok(this) => this,
-                    Err((this, err)) => {
+                    Err((err, this)) => {
                         log::error!(
-                            "Failed to reconnect serial port {}: {}",
-                            this.config.tty_path,
+                            "Failed to reconnect: {}",
                             err
                         );
                         // Continue and don't leave/terminate the control loop!
@@ -171,18 +190,19 @@ pub fn main() {
         }
 
         pub fn broadcast_slave(&self) -> impl Future<Item = (), Error = Error> {
-            self.state.proxy.broadcast_slave()
+            self.proxy.broadcast_slave()
         }
     }
 
-    log::info!("Connecting: {:?}", config);
-    let ctrl_loop = core.run(ControlLoop::connect(config)).unwrap();
+    log::info!("Connecting: {:?}", context_config);
+    let ctrl_loop = ControlLoop::new(slave_config, Box::new(context_config));
+    let ctrl_loop = core.run(ctrl_loop.reconnect()).map_err(|(err, _)| err).unwrap();
 
     let broadcast_slave = false;
     if broadcast_slave {
         log::info!(
             "Resetting Modbus slave address to {:?}",
-            ctrl_loop.state.proxy.slave()
+            ctrl_loop.proxy.slave()
         );
         core.run(ctrl_loop.broadcast_slave()).unwrap();
     }
@@ -202,11 +222,11 @@ pub fn main() {
                 .and_then(ControlLoop::measure_permittivity)
                 .then(|res| match res {
                     Ok(ctrl_loop) => {
-                        log::info!("{:?}", ctrl_loop.state.measurements);
+                        log::info!("{:?}", ctrl_loop.measurements);
                         Either::A(futures::future::ok(ctrl_loop))
                     }
-                    Err((ctrl_loop, err)) => {
-                        log::info!("{:?}", ctrl_loop.state.measurements);
+                    Err((err, ctrl_loop)) => {
+                        log::info!("{:?}", ctrl_loop.measurements);
                         Either::B(ctrl_loop.recover_after_error(&err))
                     }
                 })
