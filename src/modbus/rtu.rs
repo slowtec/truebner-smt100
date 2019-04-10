@@ -36,7 +36,7 @@ pub fn connect<T: AsyncRead + AsyncWrite + 'static>(
 pub fn connect_path(
     handle: &Handle,
     path: impl AsRef<Path>,
-) -> Box<Future<Item = ClientContext, Error = Error>> {
+) -> Box<dyn Future<Item = ClientContext, Error = Error>> {
     log::info!("Connecting to serial port {}", path.as_ref().display());
     match Serial::from_path_with_handle(path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle()) {
         Ok(mut serial) => {

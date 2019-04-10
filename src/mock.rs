@@ -142,25 +142,25 @@ impl Capabilities for Proxy {
     fn read_temperature(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = Temperature, Error = Error>> {
+    ) -> Box<dyn Future<Item = Temperature, Error = Error>> {
         Box::new(self.read_temperature(timeout))
     }
 
     fn read_water_content(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = VolumetricWaterContent, Error = Error>> {
+    ) -> Box<dyn Future<Item = VolumetricWaterContent, Error = Error>> {
         Box::new(self.read_water_content(timeout))
     }
 
     fn read_permittivity(
         &self,
         timeout: Duration,
-    ) -> Box<Future<Item = RelativePermittivity, Error = Error>> {
+    ) -> Box<dyn Future<Item = RelativePermittivity, Error = Error>> {
         Box::new(self.read_permittivity(timeout))
     }
 
-    fn read_raw_counts(&self, timeout: Duration) -> Box<Future<Item = usize, Error = Error>> {
+    fn read_raw_counts(&self, timeout: Duration) -> Box<dyn Future<Item = usize, Error = Error>> {
         Box::new(self.read_raw_counts(timeout))
     }
 }
