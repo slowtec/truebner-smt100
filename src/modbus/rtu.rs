@@ -7,14 +7,6 @@ use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_modbus::client::{rtu::connect_slave, Context as ClientContext};
 use tokio_serial::{DataBits, FlowControl, Parity, Serial, SerialPortSettings, StopBits};
 
-/// The fixed broadcast address of all sensors that cannot be altered.
-///
-/// Warning: This address should only be used for configuration purposes,
-/// i.e. for initially setting the Modbus slave address of each connected
-/// device. All other requests to this address are answered with the
-/// slave address 0 (= broadcast) and might be rejected by _tokio-modbus_!
-pub const BROADCAST_SLAVE: Slave = Slave(0xFD);
-
 pub const SERIAL_PORT_SETTINGS: SerialPortSettings = SerialPortSettings {
     baud_rate: 9600,
     data_bits: DataBits::Eight,

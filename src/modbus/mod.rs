@@ -30,7 +30,7 @@ pub fn broadcast_slave(
     context: &mut client::Context,
     slave: Slave,
 ) -> impl Future<Item = (), Error = Error> {
-    context.set_slave(rtu::BROADCAST_SLAVE);
+    context.set_slave(BROADCAST_SLAVE);
     let slave_id: SlaveId = slave.into();
     context.write_single_register(0x0004, u16::from(slave_id))
 }
@@ -240,6 +240,7 @@ impl SlaveProxy {
         self.slave
     }
 
+    /// Reconnect a new, shared Modbus context to recover from communication errors.
     pub fn reconnect(self) -> impl Future<Item = Self, Error = (Error, Self)> {
         reconnect_shared_context(&self.shared_context).then(move |res| match res {
             Ok(()) => Ok(self),
