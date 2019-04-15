@@ -12,6 +12,7 @@ pub fn main() {
     use truebner_smt100::{modbus, *};
 
     let mut logger_builder = LoggerBuilder::new();
+    logger_builder.filter_level(log::LevelFilter::Info);
     if env::var("RUST_LOG").is_ok() {
         let rust_log_var = &env::var("RUST_LOG").unwrap();
         println!("Parsing RUST_LOG={}", rust_log_var);

@@ -22,11 +22,11 @@ cargo build --example modbus-rtu
 
 ### Run
 
-Set the log level to `info` for observing the current measurements:
-
 ```sh
-RUST_LOG=info cargo run --example modbus-rtu
+cargo run --example modbus-rtu
 ```
+
+The default log level is `Info`.
 
 Due to known limitations in `tokio-proto` the serial port within the Modbus RTU
 context needs to be reconnected after a slave failed to send a response in time,
