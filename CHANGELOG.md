@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.2.0] - 2019-04-dd
+## [0.2.0] - 2019-04-15
 
 ### Added
 
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upgrade to tokio-modbus 0.3.2
 - Use a shared, reconnectable Modbus RTU environment for multiple devices
 - Breaking change: Switching from an owned to a shared Modbus connection
-  requires to provide `tokio_modbus::client::util::SharedEnvironment` when
+  requires to provide `tokio_modbus::client::util::SharedContext` when
   creating a `SlaveProxy`!
 
 ### Removed
