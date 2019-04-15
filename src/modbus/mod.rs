@@ -241,11 +241,8 @@ impl SlaveProxy {
     }
 
     /// Reconnect a new, shared Modbus context to recover from communication errors.
-    pub fn reconnect(self) -> impl Future<Item = Self, Error = (Error, Self)> {
-        reconnect_shared_context(&self.shared_context).then(move |res| match res {
-            Ok(()) => Ok(self),
-            Err(err) => Err((err, self)),
-        })
+    pub fn reconnect(&self) -> impl Future<Item = (), Error = Error> {
+        reconnect_shared_context(&self.shared_context)
     }
 
     fn shared_context(&self) -> Result<Rc<RefCell<client::Context>>> {

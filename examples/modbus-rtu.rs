@@ -82,7 +82,7 @@ pub fn main() {
         // Only shared with the single proxy and otherwise unused within the
         // control loop. Just to demonstrate how to share the Modbus context
         // and how to recover from communication errors by reconnecting.
-        shared_context: Rc<RefCell<SharedContext>>,
+        _shared_context: Rc<RefCell<SharedContext>>,
 
         config: SlaveConfig,
         proxy: modbus::SlaveProxy,
@@ -94,39 +94,15 @@ pub fn main() {
             let shared_context = Rc::new(RefCell::new(SharedContext::new(None, new_context)));
             let proxy = modbus::SlaveProxy::new(config.slave, Rc::clone(&shared_context));
             Self {
-                shared_context,
+                _shared_context: shared_context,
                 config,
                 proxy,
                 measurements: Default::default(),
             }
         }
 
-        fn reconnect(self) -> impl Future<Item = Self, Error = (Error, Self)> {
-            let shared_context = self.shared_context;
-            let config = self.config;
-            let measurements = self.measurements;
-            self.proxy.reconnect().then(move |res| {
-                match res {
-                    Ok(proxy) => {
-                        let this = Self {
-                            shared_context,
-                            config,
-                            proxy,
-                            measurements,
-                        };
-                        Ok(this)
-                    }
-                    Err((err, proxy)) => {
-                        let this = Self {
-                            shared_context,
-                            config,
-                            proxy,
-                            measurements,
-                        };
-                        Err((err, this))
-                    }
-                }
-            })
+        fn reconnect(&self) -> impl Future<Item = (), Error = Error> {
+            self.proxy.reconnect()
         }
 
         pub fn measure_temperature(mut self) -> impl Future<Item = Self, Error = (Error, Self)> {
@@ -168,24 +144,18 @@ pub fn main() {
                 })
         }
 
-        pub fn recover_after_error(self, err: &Error) -> impl Future<Item = Self, Error = ()> {
+        pub fn recover_after_error(&self, err: &Error) -> impl Future<Item = (), Error = ()> {
             log::warn!(
                 "Reconnecting after error: {}",
                 err
             );
-            self.reconnect().then(move |res| {
-                let this = match res {
-                    Ok(this) => this,
-                    Err((err, this)) => {
-                        log::error!(
-                            "Failed to reconnect: {}",
-                            err
-                        );
-                        // Continue and don't leave/terminate the control loop!
-                        this
-                    }
-                };
-                Ok(this)
+            self.reconnect().or_else(|err| {
+                log::error!(
+                    "Failed to reconnect: {}",
+                    err
+                );
+                // Continue and don't leave/terminate the control loop!
+                Ok(())
             })
         }
 
@@ -196,7 +166,7 @@ pub fn main() {
 
     log::info!("Connecting: {:?}", context_config);
     let ctrl_loop = ControlLoop::new(slave_config, Box::new(context_config));
-    let ctrl_loop = core.run(ctrl_loop.reconnect()).map_err(|(err, _)| err).unwrap();
+    core.run(ctrl_loop.reconnect()).unwrap();
 
     let broadcast_slave = false;
     if broadcast_slave {
@@ -215,7 +185,9 @@ pub fn main() {
         })
         .take_until(tripwire)
         .fold(ctrl_loop, |ctrl_loop, _event| {
-            // Asynchronous chain of measurements
+            // Asynchronous chain of measurements. The control loop
+            // is consumed and returned upon each step to update the
+            // measurement after reading a new value asynchronously.
             futures::future::ok(ctrl_loop)
                 .and_then(ControlLoop::measure_temperature)
                 .and_then(ControlLoop::measure_water_content)
@@ -227,7 +199,7 @@ pub fn main() {
                     }
                     Err((err, ctrl_loop)) => {
                         log::info!("{:?}", ctrl_loop.measurements);
-                        Either::B(ctrl_loop.recover_after_error(&err))
+                        Either::B(ctrl_loop.recover_after_error(&err).map(|()| ctrl_loop))
                     }
                 })
         });
