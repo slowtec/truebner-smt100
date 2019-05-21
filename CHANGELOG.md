@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Disabled default features of *tokio-serial* dependency
+- Disabled default features of *tokio-serial* dependency to avoid unused dependency
+  on *libudev*
 
 ## [0.2.0] - 2019-04-15
 
