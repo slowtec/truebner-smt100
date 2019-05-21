@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [0.2.1] - 2019-05-21
+
+### Changed
+
+- Disabled default features of *tokio-serial* dependency
+
 ## [0.2.0] - 2019-04-15
 
 ### Added
@@ -35,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[Unreleased]: https://github.com/slowtec/truebner-smt100/compare/v0.2.0...master
+[Unreleased]: https://github.com/slowtec/truebner-smt100/compare/v0.2.1...master
+[0.2.1]: https://github.com/slowtec/truebner-smt100/releases/v0.2.1
 [0.2.0]: https://github.com/slowtec/truebner-smt100/releases/v0.2.0
 [0.1.0]: https://github.com/slowtec/truebner-smt100/releases/v0.1.0
