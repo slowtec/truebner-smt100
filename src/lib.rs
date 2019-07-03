@@ -144,11 +144,12 @@ mod tests {
     use super::*;
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn water_content_percent() {
         for i in 0..=100 {
-            let vwc = VolumetricWaterContent::from_percent(i as f64);
+            let vwc = VolumetricWaterContent::from_percent(f64::from(i));
             assert!(vwc.is_valid());
-            assert_eq!(vwc.to_percent(), i as f64);
+            assert_eq!(vwc.to_percent(), f64::from(i));
         }
         assert!(!VolumetricWaterContent::from_percent(-0.5).is_valid());
         assert!(!VolumetricWaterContent::from_percent(100.01).is_valid());
