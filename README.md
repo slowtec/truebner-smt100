@@ -1,11 +1,23 @@
 # TRUEBNER SMT100 Soil Moisture Sensor
 
-Device drivers for the [TRUEBNER SMT100 Soil Moisture Sensor](http://www.truebner.de/smt100).
-
 [![Crates.io version](https://img.shields.io/crates/v/truebner-smt100.svg)](https://crates.io/crates/truebner-smt100)
 [![Build status](https://travis-ci.org/slowtec/truebner-smt100.svg?branch=master)](https://travis-ci.org/slowtec/truebner-smt100)
 
-Sensor values are accessible through the generic `Capabilities` trait independent of
+Device drivers for the [TRUEBNER SMT100 Soil Moisture Sensor](http://www.truebner.de/smt100)
+
+[![TRUEBNER logo](res/logo_truebner.jpg)](http://www.truebner.de/en)
+
+## Disclaimer
+
+This Rust crate is solely provided and maintained by [slowtec GmbH](https://www.slowtec.de).
+
+It is **not** an official repository of [TRUEBNER GmbH](http://www.truebner.de/en), who
+has no obligations. By kindly providing all technical specifications and agreeing to
+publish our code they are just *enablers* without any responsibilities nor liabilities.
+
+## Usage
+
+Sensor values are readable through the generic `Capabilities` trait independent of
 the actual connection and protocol. Proxy objects provide concrete implementations of
 this trait:
 
