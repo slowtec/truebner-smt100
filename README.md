@@ -2,6 +2,7 @@
 
 [![Crates.io version](https://img.shields.io/crates/v/truebner-smt100.svg)](https://crates.io/crates/truebner-smt100)
 [![Build status](https://travis-ci.org/slowtec/truebner-smt100.svg?branch=master)](https://travis-ci.org/slowtec/truebner-smt100)
+[![Dependencies status](https://deps.rs/repo/github/slowtec/truebner-smt100/status.svg)](https://deps.rs/repo/github/slowtec/truebner-smt100)
 
 Device drivers for the [TRUEBNER SMT100 Soil Moisture Sensor](http://www.truebner.de/en/smt100)
 
