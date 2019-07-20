@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added *no_std* features *modbus*, *rtu*, and *modbus-rtu*
+
 ### Changed
+
+- Renamed feature *modbus-rtu* as *tokio-modbus-rtu*
 
 ### Removed
 

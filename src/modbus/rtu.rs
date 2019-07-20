@@ -1,18 +1,20 @@
 use super::*;
 
+use crate::core::modbus::rtu::*;
+
 use futures::{future, Future};
 use std::{io::Error, path::Path, time::Duration};
 use tokio_core::reactor::Handle;
 use tokio_io::{AsyncRead, AsyncWrite};
 use tokio_modbus::client::{rtu::connect_slave, Context as ClientContext};
-use tokio_serial::{DataBits, FlowControl, Parity, Serial, SerialPortSettings, StopBits};
+use tokio_serial::{Serial, SerialPortSettings};
 
 pub const SERIAL_PORT_SETTINGS: SerialPortSettings = SerialPortSettings {
-    baud_rate: 9600,
-    data_bits: DataBits::Eight,
-    parity: Parity::Even,
-    stop_bits: StopBits::One,
-    flow_control: FlowControl::None,
+    baud_rate: BAUD_RATE,
+    data_bits: DATA_BITS,
+    stop_bits: STOP_BITS,
+    parity: PARITY,
+    flow_control: FLOW_CONTROL,
     // A timeout is currently not supported and ignored by tokio-serial
     // See also: https://github.com/berkowski/tokio-serial/issues/15
     timeout: Duration::from_secs(0),
