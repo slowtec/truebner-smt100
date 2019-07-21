@@ -1,22 +1,11 @@
 sudo: required
+
 language: rust
+
 matrix:
   include:
   - rust: stable
 
-addons:
-  apt:
-    packages:
-      - libudev-dev
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - binutils-dev
-      - cmake
-    sources:
-      - kalakris-cmake
-
-# load travis-cargo
 before_script:
   - |
       export PATH=$HOME/.local/bin:$PATH
@@ -26,8 +15,13 @@ before_script:
 
 script:
   - |
-      cargo build &&
-      cargo test
+      # [no_std]
+      cargo build --no-default-features --features modbus,rtu &&
+      cargo test --no-default-features --features modbus,rtu
+  - |
+      # [std]
+      cargo build --all &&
+      cargo test --all
 
 after_success:
-  - cargo coveralls
+  - cargo coveralls || true
