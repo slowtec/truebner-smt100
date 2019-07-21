@@ -1,8 +1,7 @@
 use super::*;
 
-use std::cell::Cell;
-use std::io::{Error, ErrorKind};
-use std::time::{Duration, Instant};
+use futures::{future, Future};
+use std::{cell::Cell, io::{Error, ErrorKind}, time::{Duration, Instant}};
 
 use tokio::timer::Delay;
 use tokio::util::FutureExt;
@@ -11,7 +10,7 @@ pub struct Proxy {
     temperature: Temperature,
     water_content: VolumetricWaterContent,
     permittivity: RelativePermittivity,
-    raw_counts: usize,
+    raw_counts: RawCounts,
     delay: Duration,
     next_error: Cell<Option<Error>>,
 }
@@ -27,12 +26,12 @@ pub trait Driver {
 
     fn set_permittivity(&mut self, permittivity: RelativePermittivity);
 
-    fn set_raw_counts(&mut self, raw_counts: usize);
+    fn set_raw_counts(&mut self, raw_counts: RawCounts);
 }
 
 impl Proxy {
     pub fn default_temperature() -> Temperature {
-        Temperature::from(20.0)
+        Temperature::from_degree_celsius(20.0)
     }
 
     pub fn default_water_content() -> VolumetricWaterContent {
@@ -43,11 +42,11 @@ impl Proxy {
         RelativePermittivity::min()
     }
 
-    pub const fn default_raw_counts() -> usize {
-        0
+    pub /*const*/ fn default_raw_counts() -> RawCounts {
+        Default::default()
     }
 
-    fn read_value<T>(&self, value: T, timeout: Duration) -> impl Future<Item = T, Error = Error>
+    fn delay_value<T>(&self, value: T, timeout: Duration) -> impl Future<Item = T, Error = Error>
     where
         T: 'static,
     {
@@ -72,30 +71,46 @@ impl Proxy {
     /// Implementation of Capabilities::read_temperature()
     pub fn read_temperature(
         &self,
-        timeout: Duration,
+        timeout: Option<Duration>,
     ) -> impl Future<Item = Temperature, Error = Error> {
-        self.read_value(self.temperature, timeout)
+        if let Some(timeout) = timeout {
+            future::Either::A(self.delay_value(self.temperature, timeout))
+        } else {
+            future::Either::B(future::ok(self.temperature))
+        }
     }
 
     /// Implementation of Capabilities::read_water_content()
     pub fn read_water_content(
         &self,
-        timeout: Duration,
+        timeout: Option<Duration>,
     ) -> impl Future<Item = VolumetricWaterContent, Error = Error> {
-        self.read_value(self.water_content, timeout)
+        if let Some(timeout) = timeout {
+            future::Either::A(self.delay_value(self.water_content, timeout))
+        } else {
+            future::Either::B(future::ok(self.water_content))
+        }
     }
 
     /// Implementation of Capabilities::read_permittivity()
     pub fn read_permittivity(
         &self,
-        timeout: Duration,
+        timeout: Option<Duration>,
     ) -> impl Future<Item = RelativePermittivity, Error = Error> {
-        self.read_value(self.permittivity, timeout)
+        if let Some(timeout) = timeout {
+            future::Either::A(self.delay_value(self.permittivity, timeout))
+        } else {
+            future::Either::B(future::ok(self.permittivity))
+        }
     }
 
     /// Implementation of Capabilities::read_raw_counts()
-    pub fn read_raw_counts(&self, timeout: Duration) -> impl Future<Item = usize, Error = Error> {
-        self.read_value(self.raw_counts, timeout)
+    pub fn read_raw_counts(&self, timeout: Option<Duration>) -> impl Future<Item = RawCounts, Error = Error> {
+        if let Some(timeout) = timeout {
+            future::Either::A(self.delay_value(self.raw_counts, timeout))
+        } else {
+            future::Either::B(future::ok(self.raw_counts))
+        }
     }
 }
 
@@ -133,7 +148,7 @@ impl Driver for Proxy {
         self.permittivity = permittivity;
     }
 
-    fn set_raw_counts(&mut self, raw_counts: usize) {
+    fn set_raw_counts(&mut self, raw_counts: RawCounts) {
         self.raw_counts = raw_counts;
     }
 }
@@ -141,26 +156,26 @@ impl Driver for Proxy {
 impl Capabilities for Proxy {
     fn read_temperature(
         &self,
-        timeout: Duration,
+        timeout: Option<Duration>,
     ) -> Box<dyn Future<Item = Temperature, Error = Error>> {
         Box::new(self.read_temperature(timeout))
     }
 
     fn read_water_content(
         &self,
-        timeout: Duration,
+        timeout: Option<Duration>,
     ) -> Box<dyn Future<Item = VolumetricWaterContent, Error = Error>> {
         Box::new(self.read_water_content(timeout))
     }
 
     fn read_permittivity(
         &self,
-        timeout: Duration,
+        timeout: Option<Duration>,
     ) -> Box<dyn Future<Item = RelativePermittivity, Error = Error>> {
         Box::new(self.read_permittivity(timeout))
     }
 
-    fn read_raw_counts(&self, timeout: Duration) -> Box<dyn Future<Item = usize, Error = Error>> {
+    fn read_raw_counts(&self, timeout: Option<Duration>) -> Box<dyn Future<Item = RawCounts, Error = Error>> {
         Box::new(self.read_raw_counts(timeout))
     }
 }
