@@ -6,6 +6,9 @@ matrix:
   include:
   - rust: stable
 
+git:
+  depth: 1
+
 before_script:
   - |
       export PATH=$HOME/.local/bin:$PATH
@@ -15,11 +18,9 @@ before_script:
 
 script:
   - |
-      # [no_std]
       cargo build --no-default-features --features modbus,rtu &&
       cargo test --no-default-features --features modbus,rtu
   - |
-      # [std]
       cargo build --all &&
       cargo test --all
 
