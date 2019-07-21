@@ -3,7 +3,7 @@ use super::*;
 #[cfg(feature = "rtu")]
 pub mod rtu;
 
-use core::{fmt, convert::TryInto};
+use core::{fmt, mem, convert::TryInto};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DecodeError {
@@ -30,10 +30,10 @@ impl std::error::Error for DecodeError {}
 pub type DecodeResult<T> = Result<T, DecodeError>;
 
 fn decode_be_u16_from_bytes(input: &[u8]) -> DecodeResult<(u16, &[u8])> {
-    if input.len() < std::mem::size_of::<u16>() {
+    if input.len() < mem::size_of::<u16>() {
         return Err(DecodeError::InsufficientInput);
     }
-    let (head, rest) = input.split_at(std::mem::size_of::<u16>());
+    let (head, rest) = input.split_at(mem::size_of::<u16>());
     if let Ok(bytes) = head.try_into() {
         Ok((u16::from_be_bytes(bytes), rest))
     } else {
