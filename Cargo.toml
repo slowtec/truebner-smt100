@@ -12,27 +12,30 @@ repository = "https://github.com/slowtec/truebner-smt100"
 edition = "2018"
 
 [dependencies]
-futures = { version = "0.1", optional = true }
-log = { version = "~0.4", default-features = false }
+async-trait = "0.1"
+log = { version = "0.4", default-features = false }
 serialport = { version = "3", default-features = false, optional = true }
-tokio = { version = "0.1", optional = true }
-tokio-core = { version = "0.1", optional = true }
-tokio-io = { version = "0.1", optional = true }
-tokio-modbus = { version = "~0.3.2", default-features = false, features = ["rtu"], optional = true }
-tokio-serial = { version = "3", default-features = false, optional = true }
+tokio = { version = "0.2", default-features = false, features = ["time"], optional = true }
+tokio-modbus = { version = "0.4", default-features = false, features = ["rtu"], optional = true }
+tokio-serial = { version = "4", default-features = false, optional = true }
 
 [dev-dependencies]
-chrono = "~0.4"
-env_logger = "~0.6"
-stream-cancel = "~0.4"
+anyhow = "1"
+chrono = "0.4"
+env_logger = "0.9"
+futures = "0.3"
+stream-cancel = "0.6"
+
+[dev-dependencies.tokio]
+features = ["time", "macros", "rt-core", "stream"]
 
 [features]
 default = ["tokio-modbus-rtu"]
-tokio-modbus-rtu = ["std", "modbus", "rtu", "tokio-modbus", "tokio", "tokio-core", "tokio-io", "tokio-serial"]
+tokio-modbus-rtu = ["std", "modbus", "rtu", "tokio-modbus", "tokio", "tokio-serial"]
 tokio-mock = ["tokio"]
 modbus = []
 rtu = ["serialport"]
-std = ["futures"]
+std = []
 
 [badges]
 travis-ci = { repository = "slowtec/truebner-smt100" }

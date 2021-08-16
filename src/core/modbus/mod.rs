@@ -1,9 +1,8 @@
-use super::*;
+use crate::core::*;
+use core::{convert::TryInto, fmt, mem};
 
 #[cfg(feature = "rtu")]
 pub mod rtu;
-
-use core::{fmt, mem, convert::TryInto};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DecodeError {
@@ -20,7 +19,6 @@ impl fmt::Display for DecodeError {
             InvalidInput => write!(f, "Invalid input"),
             InvalidData => write!(f, "Invalid data"),
         }
-
     }
 }
 
@@ -50,7 +48,8 @@ pub fn decode_temperature_from_u16(input: u16) -> DecodeResult<Temperature> {
 }
 
 pub fn decode_temperature_from_bytes(input: &[u8]) -> DecodeResult<(Temperature, &[u8])> {
-    decode_be_u16_from_bytes(input).and_then(|(val, rest)| Ok((decode_temperature_from_u16(val)?, rest)))
+    decode_be_u16_from_bytes(input)
+        .and_then(|(val, rest)| Ok((decode_temperature_from_u16(val)?, rest)))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,8 +75,11 @@ pub fn decode_water_content_from_u16(input: u16) -> DecodeResult<VolumetricWater
     }
 }
 
-pub fn decode_water_content_from_bytes(input: &[u8]) -> DecodeResult<(VolumetricWaterContent, &[u8])> {
-    decode_be_u16_from_bytes(input).and_then(|(val, rest)| Ok((decode_water_content_from_u16(val)?, rest)))
+pub fn decode_water_content_from_bytes(
+    input: &[u8],
+) -> DecodeResult<(VolumetricWaterContent, &[u8])> {
+    decode_be_u16_from_bytes(input)
+        .and_then(|(val, rest)| Ok((decode_water_content_from_u16(val)?, rest)))
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -104,7 +106,8 @@ pub fn decode_permittivity_from_u16(input: u16) -> DecodeResult<RelativePermitti
 }
 
 pub fn decode_permittivity_from_bytes(input: &[u8]) -> DecodeResult<(RelativePermittivity, &[u8])> {
-    decode_be_u16_from_bytes(input).and_then(|(val, rest)| Ok((decode_permittivity_from_u16(val)?, rest)))
+    decode_be_u16_from_bytes(input)
+        .and_then(|(val, rest)| Ok((decode_permittivity_from_u16(val)?, rest)))
 }
 
 pub const RAW_COUNTS_REG_START: u16 = 0x0003;
@@ -117,7 +120,8 @@ pub fn decode_raw_counts_from_u16(input: u16) -> DecodeResult<RawCounts> {
 
 #[inline]
 pub fn decode_raw_counts_from_bytes(input: &[u8]) -> DecodeResult<(RawCounts, &[u8])> {
-    decode_be_u16_from_bytes(input).and_then(|(val, rest)| Ok((decode_raw_counts_from_u16(val)?, rest)))
+    decode_be_u16_from_bytes(input)
+        .and_then(|(val, rest)| Ok((decode_raw_counts_from_u16(val)?, rest)))
 }
 
 pub const BROADCAST_SLAVE_ADDR: u8 = 0xFD;
