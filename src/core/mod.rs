@@ -1,7 +1,7 @@
 #[cfg(feature = "modbus")]
 pub mod modbus;
 
-use core::{fmt, time::Duration, result::Result};
+use core::{fmt, result::Result, time::Duration};
 
 /// (Thermodynamic) Temperature.
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]

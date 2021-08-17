@@ -1,11 +1,6 @@
-use super::*;
-
-use crate::core::modbus::rtu::*;
-
-use futures::{future, Future};
-use std::{io::Error, path::Path, time::Duration};
-use tokio_core::reactor::Handle;
-use tokio_io::{AsyncRead, AsyncWrite};
+use crate::{core::modbus::rtu::*, modbus::*};
+use std::{path::Path, time::Duration};
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_modbus::client::{rtu::connect_slave, Context as ClientContext};
 use tokio_serial::{Serial, SerialPortSettings};
 
@@ -20,20 +15,17 @@ pub const SERIAL_PORT_SETTINGS: SerialPortSettings = SerialPortSettings {
     timeout: Duration::from_secs(0),
 };
 
-pub fn connect<T: AsyncRead + AsyncWrite + 'static>(
-    handle: &Handle,
-    transport: T,
-) -> impl Future<Item = ClientContext, Error = Error> {
-    connect_slave(handle, transport, BROADCAST_SLAVE)
+pub async fn connect<T>(transport: T) -> Result<ClientContext>
+where
+    T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    connect_slave(transport, BROADCAST_SLAVE).await
 }
 
-pub fn connect_path(
-    handle: &Handle,
-    path: impl AsRef<Path>,
-) -> Box<dyn Future<Item = ClientContext, Error = Error>> {
+pub async fn connect_path(path: impl AsRef<Path>) -> Result<ClientContext> {
     log::info!("Connecting to serial port {}", path.as_ref().display());
-    match Serial::from_path_with_handle(path, &SERIAL_PORT_SETTINGS, &handle.new_tokio_handle()) {
-        Ok(serial) => Box::new(connect(handle, serial)),
-        Err(err) => Box::new(future::err(err)),
+    match Serial::from_path(path, &SERIAL_PORT_SETTINGS) {
+        Ok(serial) => connect(serial).await,
+        Err(err) => Err(err),
     }
 }
